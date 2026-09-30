@@ -5,7 +5,7 @@ from http.server import HTTPServer, BaseHTTPRequestHandler
 
 from aiogram import Bot, Dispatcher
 from aiogram.filters import Command
-from aiogram.types import Message, CallbackQuery
+from aiogram.types import Message, CallbackQuery, BotCommand
 
 from config import BOT_TOKEN
 from database import init_db, get_player, create_player, add_reward, next_floor
@@ -114,6 +114,15 @@ async def fight_command(message: Message):
 
 async def main():
     init_db()
+    await bot.set_my_commands([
+        BotCommand(command="start", description="🎮 Запустить игру"),
+        BotCommand(command="profile", description="👤 Профиль"),
+        BotCommand(command="tower", description="🏰 Башня"),
+        BotCommand(command="fight", description="⚔️ Бой"),
+        BotCommand(command="inventory", description="🎒 Инвентарь"),
+        BotCommand(command="equipment", description="🛡 Экипировка"),
+        BotCommand(command="help", description="❓ Помощь"),
+    ])
     print("NeoTowerGameBot started")
     await dp.start_polling(bot)
 
