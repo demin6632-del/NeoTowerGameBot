@@ -31,9 +31,7 @@ def run_health_server():
     server = HTTPServer(("0.0.0.0", port), HealthHandler)
     server.serve_forever()
 
-
 Thread(target=run_health_server, daemon=True).start()
-
 
 if not BOT_TOKEN:
     raise RuntimeError("BOT_TOKEN is missing")
@@ -47,7 +45,7 @@ setup_error_handler(dp)
 async def start(message: Message):
     player = get_player(message.from_user.id)
     if player:
-        await message.answer("🏙️ NEO TOWER\n\nТы уже в игре.", reply_markup=main_keyboard())
+        await message.answer("🏙️ NEO TOWER\n\nДобро пожаловать обратно!", reply_markup=main_keyboard())
     else:
         await message.answer("🏙️ NEO TOWER\n\nВыбери героя:", reply_markup=heroes_keyboard())
 
@@ -57,8 +55,31 @@ async def choose_hero(callback: CallbackQuery):
     hero_id = callback.data.replace("hero_", "")
     hero = HEROES[hero_id]
     create_player(callback.from_user.id, callback.from_user.first_name, hero_id, hero["hp"], hero["damage"], hero["armor"])
-    await callback.message.edit_text(f"{hero['name']} выбран!", reply_markup=main_keyboard())
+    await callback.message.edit_text(f"🧙 {hero['name']} выбран!", reply_markup=main_keyboard())
     await callback.answer()
+
+
+@dp.callback_query(lambda c: c.data == "fight")
+async def fight_button(callback: CallbackQuery):
+    player = get_player(callback.from_user.id)
+    if not player:
+        await callback.message.answer("Сначала выбери героя через /start")
+        return
+    result = fight(player, player["floor"])
+    text = "⚔️ Бой завершён\n\n" + "\n".join(result["log"])
+    if result["win"]:
+        add_reward(callback.from_user.id, 100, result["reward"], "iron_sword")
+        next_floor(callback.from_user.id)
+        text += "\n\n🏆 Победа!"
+    else:
+        text += "\n\n💀 Поражение"
+    await callback.message.answer(text)
+    await callback.answer()
+
+
+@dp.message(Command("fight"))
+async def fight_command(message: Message):
+    await fight_button(type("Obj", (), {"from_user": message.from_user, "message": message, "answer": lambda: None})())
 
 
 @dp.callback_query(lambda c: c.data == "inventory")
@@ -66,50 +87,40 @@ async def inventory(callback: CallbackQuery):
     await callback.message.answer(inventory_text(starter_inventory()))
 
 
-@dp.message(Command("inventory"))
-async def inventory_command(message: Message):
-    await message.answer(inventory_text(starter_inventory()))
-
-
 @dp.callback_query(lambda c: c.data == "equipment")
 async def equipment(callback: CallbackQuery):
-    await callback.message.answer("🛡 Экипировка:\n\n⚔️ Железный меч (+10 урон)\n🛡 Слоты экипировки готовы")
-
-
-@dp.message(Command("equipment"))
-async def equipment_command(message: Message):
-    await message.answer("🛡 Экипировка:\n\n⚔️ Железный меч (+10 урон)")
+    await callback.message.answer("🛡 Экипировка:\n\n⚔️ Железный меч (+10 урон)")
 
 
 @dp.callback_query(lambda c: c.data == "profile")
 async def profile(callback: CallbackQuery):
     player = get_player(callback.from_user.id)
-    await callback.message.answer(f"👤 Уровень: {player['level']}\nXP: {player['xp']}\nЭтаж: {player['floor']}\nКредиты: {player['credits']}")
+    if not player:
+        await callback.message.answer("Сначала выбери героя через /start")
+        return
+    await callback.message.answer(f"👤 Уровень: {player['level']}\nXP: {player['xp']}\nЭтаж: {player['floor']}\n💰 Кредиты: {player['credits']}")
+
+
+@dp.callback_query(lambda c: c.data == "hero")
+async def hero_page(callback: CallbackQuery):
+    await callback.message.answer("🧙 Герой\n\nХарактеристики и улучшения скоро доступны.")
 
 
 @dp.callback_query(lambda c: c.data == "tower")
 async def tower(callback: CallbackQuery):
-    await callback.message.answer("🏢 Башня. Первый этаж готов. Используй /fight")
+    player = get_player(callback.from_user.id)
+    floor = player['floor'] if player else 1
+    await callback.message.answer(f"🏰 Neo Tower\n\nТекущий этаж: {floor}\n\n⚔️ Готовься к бою!")
 
 
-@dp.message(Command("fight"))
-async def fight_command(message: Message):
-    player = get_player(message.from_user.id)
-    if not player:
-        await message.answer("Сначала выбери героя через /start")
-        return
+@dp.callback_query(lambda c: c.data == "shop")
+async def shop(callback: CallbackQuery):
+    await callback.message.answer("🛒 Магазин\n\n⚔️ Железный меч — 100 монет\n💊 Зелье — 50 монет")
 
-    result = fight(player, player["floor"])
-    text = "⚔️ Бой завершён\n\n" + "\n".join(result["log"])
 
-    if result["win"]:
-        add_reward(message.from_user.id, 100, result["reward"], "iron_sword")
-        next_floor(message.from_user.id)
-        text += "\n\n🏆 Победа!\n+100 XP"
-    else:
-        text += "\n\n💀 Поражение"
-
-    await message.answer(text)
+@dp.callback_query(lambda c: c.data == "rating")
+async def rating(callback: CallbackQuery):
+    await callback.message.answer("🏆 Рейтинг\n\n1. Игроки Neo Tower\n\nСкоро здесь будет таблица лидеров.")
 
 
 async def main():
