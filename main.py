@@ -10,9 +10,15 @@ from keyboards import heroes_keyboard, main_keyboard
 from heroes import HEROES
 from inventory import inventory_text, starter_inventory
 from battle import fight
+from error_handler import setup_error_handler
+
+
+if not BOT_TOKEN:
+    raise RuntimeError("BOT_TOKEN is missing")
 
 bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher()
+setup_error_handler(dp)
 
 
 @dp.message(Command("start"))
