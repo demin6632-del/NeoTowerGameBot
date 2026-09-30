@@ -67,6 +67,23 @@ def add_reward(user_id, xp, credits, item=None):
     db.close()
 
 
+def equip_item(user_id, item):
+    db = connect()
+    db.execute(
+        "UPDATE players SET equipment=? WHERE id=?",
+        (item, user_id)
+    )
+    db.commit()
+    db.close()
+
+
+def get_equipment(user_id):
+    player = get_player(user_id)
+    if player:
+        return player["equipment"]
+    return ""
+
+
 def next_floor(user_id):
     db = connect()
     player = get_player(user_id)
