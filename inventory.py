@@ -22,13 +22,41 @@ def get_item(item_id):
 
 def inventory_text(items):
     if not items:
-        return "🎒 Инвентарь пуст"
+        return "🎒 Рюкзак пуст\n\nНайди предметы в башне или купи их в магазине."
 
-    result = "🎒 Инвентарь:\n\n"
+    result = "🎒 РЮКЗАК\n\n"
+    total_damage = 0
+    total_armor = 0
 
     for item in items:
         data = ITEMS.get(item)
         if data:
             result += f"• {data['name']}\n"
+            total_damage += data.get("damage", 0)
+            total_armor += data.get("armor", 0)
+
+    result += "\n📊 Бонусы:\n"
+    result += f"⚔️ Урон: +{total_damage}\n"
+    result += f"🛡 Броня: +{total_armor}"
 
     return result
+
+
+def equipment_text(items):
+    weapon = "нет"
+    armor = "нет"
+
+    for item in items:
+        data = ITEMS.get(item)
+        if not data:
+            continue
+        if data.get("type") == "weapon":
+            weapon = data["name"]
+        if data.get("type") == "armor":
+            armor = data["name"]
+
+    return (
+        "🛡 СНАРЯЖЕНИЕ\n\n"
+        f"⚔️ Оружие: {weapon}\n"
+        f"🛡 Броня: {armor}"
+    )
