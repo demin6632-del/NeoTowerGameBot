@@ -76,19 +76,22 @@ async def run_fight(user_id, message):
 
 @dp.message()
 async def menu_buttons(message: Message):
-    buttons = {
-        "⚔️ БОЙ": "fight",
-        "🏰 БАШНЯ": "tower",
-        "🧙 ГЕРОЙ": "hero",
-        "🎒 РЮКЗАК": "inventory",
-        "🛡 СНАРЯЖЕНИЕ": "equipment",
-        "🛒 МАГАЗИН": "shop",
-        "🏆 РЕЙТИНГ": "rating",
-    }
     if message.text == "⚔️ БОЙ":
         await run_fight(message.from_user.id, message)
-    elif message.text in buttons:
-        await message.answer(f"Открыт раздел: {buttons[message.text]}", reply_markup=main_keyboard())
+    elif message.text == "🏰 БАШНЯ":
+        player = get_player(message.from_user.id)
+        floor = player["floor"] if player else 1
+        await message.answer(f"🏰 Neo Tower\n\nТекущий этаж: {floor}", reply_markup=main_keyboard())
+    elif message.text == "🧙 ГЕРОЙ":
+        await message.answer("🧙 Герой\n\nХарактеристики и улучшения героя.", reply_markup=main_keyboard())
+    elif message.text == "🎒 РЮКЗАК":
+        await message.answer(inventory_text(starter_inventory()), reply_markup=main_keyboard())
+    elif message.text == "🛡 СНАРЯЖЕНИЕ":
+        await message.answer("🛡 Снаряжение:\n\n⚔️ Железный меч (+10 урон)", reply_markup=main_keyboard())
+    elif message.text == "🛒 МАГАЗИН":
+        await message.answer("🛒 Магазин\n\n⚔️ Железный меч — 100 монет\n💊 Зелье — 50 монет", reply_markup=main_keyboard())
+    elif message.text == "🏆 РЕЙТИНГ":
+        await message.answer("🏆 Рейтинг\n\n1. Игроки Neo Tower", reply_markup=main_keyboard())
 
 
 @dp.message(Command("fight"))
