@@ -38,9 +38,19 @@ async def inventory(callback: CallbackQuery):
     await callback.message.answer(inventory_text(starter_inventory()))
 
 
+@dp.message(Command("inventory"))
+async def inventory_command(message: Message):
+    await message.answer(inventory_text(starter_inventory()))
+
+
 @dp.callback_query(lambda c: c.data == "equipment")
 async def equipment(callback: CallbackQuery):
     await callback.message.answer("🛡 Экипировка:\n\n⚔️ Железный меч (+10 урон)\n🛡 Слоты экипировки готовы")
+
+
+@dp.message(Command("equipment"))
+async def equipment_command(message: Message):
+    await message.answer("🛡 Экипировка:\n\n⚔️ Железный меч (+10 урон)")
 
 
 @dp.callback_query(lambda c: c.data == "profile")
@@ -57,7 +67,6 @@ async def tower(callback: CallbackQuery):
 @dp.message(Command("fight"))
 async def fight_command(message: Message):
     player = get_player(message.from_user.id)
-
     if not player:
         await message.answer("Сначала выбери героя через /start")
         return
