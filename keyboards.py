@@ -5,15 +5,19 @@ def main_keyboard():
     return InlineKeyboardMarkup(
         inline_keyboard=[
             [
-                InlineKeyboardButton(text="👤 Профиль", callback_data="profile"),
-                InlineKeyboardButton(text="🎒 Инвентарь", callback_data="inventory")
+                InlineKeyboardButton(text="🏰 БАШНЯ", callback_data="tower"),
+                InlineKeyboardButton(text="⚔️ БОЙ", callback_data="fight")
             ],
             [
-                InlineKeyboardButton(text="🏰 Башня", callback_data="tower"),
-                InlineKeyboardButton(text="⚔️ Бой", callback_data="fight")
+                InlineKeyboardButton(text="🧙 ГЕРОЙ", callback_data="profile"),
+                InlineKeyboardButton(text="🎒 РЮКЗАК", callback_data="inventory")
             ],
             [
-                InlineKeyboardButton(text="🛡 Экипировка", callback_data="equipment")
+                InlineKeyboardButton(text="🛡 СНАРЯЖЕНИЕ", callback_data="equipment")
+            ],
+            [
+                InlineKeyboardButton(text="🛒 МАГАЗИН", callback_data="shop"),
+                InlineKeyboardButton(text="🏆 РЕЙТИНГ", callback_data="rating")
             ]
         ]
     )
@@ -22,9 +26,9 @@ def main_keyboard():
 def heroes_keyboard():
     return InlineKeyboardMarkup(
         inline_keyboard=[
-            [InlineKeyboardButton(text="🤖 Киборг", callback_data="hero_cyborg")],
-            [InlineKeyboardButton(text="🥷 Ниндзя", callback_data="hero_ninja")],
-            [InlineKeyboardButton(text="🔮 Псионик", callback_data="hero_psionic")]
+            [InlineKeyboardButton(text="🤖 КИБОРГ", callback_data="hero_cyborg")],
+            [InlineKeyboardButton(text="🥷 НИНДЗЯ", callback_data="hero_ninja")],
+            [InlineKeyboardButton(text="🔮 ПСИОНИК", callback_data="hero_psionic")]
         ]
     )
 
@@ -32,7 +36,7 @@ def heroes_keyboard():
 def battle_keyboard():
     return InlineKeyboardMarkup(
         inline_keyboard=[
-            [InlineKeyboardButton(text="⚔️ Атаковать", callback_data="attack")],
-            [InlineKeyboardButton(text="🏃 Отступить", callback_data="escape")]
+            [InlineKeyboardButton(text="⚔️ АТАКОВАТЬ", callback_data="attack")],
+            [InlineKeyboardButton(text="🏃 ОТСТУПИТЬ", callback_data="escape")]
         ]
     )
