@@ -1,4 +1,7 @@
 import asyncio
+import os
+from threading import Thread
+from http.server import HTTPServer, BaseHTTPRequestHandler
 
 from aiogram import Bot, Dispatcher
 from aiogram.filters import Command
@@ -11,6 +14,25 @@ from heroes import HEROES
 from inventory import inventory_text, starter_inventory
 from battle import fight
 from error_handler import setup_error_handler
+
+
+class HealthHandler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(200)
+        self.end_headers()
+        self.wfile.write(b"NeoTowerGameBot is alive")
+
+    def log_message(self, format, *args):
+        pass
+
+
+def run_health_server():
+    port = int(os.environ.get("PORT", 10000))
+    server = HTTPServer(("0.0.0.0", port), HealthHandler)
+    server.serve_forever()
+
+
+Thread(target=run_health_server, daemon=True).start()
 
 
 if not BOT_TOKEN:
