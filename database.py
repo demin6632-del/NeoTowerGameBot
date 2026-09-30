@@ -24,7 +24,9 @@ def init_db():
         level INTEGER,
         xp INTEGER,
         floor INTEGER,
-        credits INTEGER
+        credits INTEGER,
+        inventory TEXT,
+        equipment TEXT
     )
     """)
 
@@ -35,12 +37,7 @@ def init_db():
 def get_player(user_id):
     db = connect()
     cursor = db.cursor()
-
-    cursor.execute(
-        "SELECT * FROM players WHERE id=?",
-        (user_id,)
-    )
-
+    cursor.execute("SELECT * FROM players WHERE id=?", (user_id,))
     player = cursor.fetchone()
     db.close()
     return player
@@ -51,11 +48,8 @@ def create_player(user_id, name, hero, hp, damage, armor):
     cursor = db.cursor()
 
     cursor.execute(
-        """
-        INSERT INTO players
-        VALUES(?,?,?,?,?,?,?,?,?,?)
-        """,
-        (user_id, name, hero, hp, damage, armor, 1, 0, 1, 0)
+        """INSERT INTO players VALUES(?,?,?,?,?,?,?,?,?,?,?,?)""",
+        (user_id, name, hero, hp, damage, armor, 1, 0, 1, 0, "iron_sword", "")
     )
 
     db.commit()
