@@ -17,8 +17,11 @@ active_battles = {}
 
 class HealthHandler(BaseHTTPRequestHandler):
     def do_GET(self):
-        self.send_response(200); self.end_headers(); self.wfile.write(b"NeoTowerGameBot is alive")
-    def log_message(self, format, *args): pass
+        self.send_response(200)
+        self.end_headers()
+        self.wfile.write(b"NeoTowerGameBot is alive")
+    def log_message(self, format, *args):
+        pass
 
 Thread(target=lambda: HTTPServer(("0.0.0.0", int(os.environ.get("PORT",10000))), HealthHandler).serve_forever(), daemon=True).start()
 
@@ -47,7 +50,7 @@ async def run_fight(uid,message):
     if uid not in active_battles:
         active_battles[uid]=start_battle(p,p['floor'])
     state=active_battles[uid]
-    await message.answer(f"⚔️ Бой\n\n❤️ Герой: {state['player_hp']}\n🤖 Враг: {state['enemy_hp']}\n\nВыбери действие",reply_markup=battle_keyboard())
+    await message.answer(f"⚔️ Бой\n\n❤️ Герой: {state['player_hp']}\n🤖 Враг: {state['enemy_hp']}",reply_markup=battle_keyboard())
 
 @dp.callback_query(lambda c:c.data.startswith("battle_"))
 async def battle_action(callback:CallbackQuery):
@@ -73,22 +76,28 @@ async def battle_action(callback:CallbackQuery):
             active_battles.pop(uid,None)
             await callback.message.answer("💀 Поражение",reply_markup=main_keyboard())
         else:
-            await callback.message.answer(f"⚔️ Ход боя\n❤️ {state['player_hp']} HP\n🤖 {state['enemy_hp']} HP",reply_markup=battle_keyboard())
+            await callback.message.answer(f"⚔️ Бой продолжается\n❤️ {state['player_hp']} HP\n🤖 {state['enemy_hp']} HP",reply_markup=battle_keyboard())
     await callback.answer()
 
 @dp.message()
 async def menu(message:Message):
-    if message.text=="⚔️ БОЙ": await run_fight(message.from_user.id,message)
-    elif message.text=="🎒 РЮКЗАК": await message.answer(inventory_text([]),reply_markup=main_keyboard())
+    p=get_player(message.from_user.id)
+    if message.text=="⚔️ БОЙ":
+        await run_fight(message.from_user.id,message)
+    elif message.text=="🎒 РЮКЗАК":
+        await message.answer(inventory_text([]),reply_markup=main_keyboard())
     elif message.text=="🧙 ГЕРОЙ":
-        p=get_player(message.from_user.id)
-        await message.answer(f"🧙 Герой\n❤️ HP: {p['hp']}\n⚔️ Урон: {p['damage']}",reply_markup=main_keyboard())
-    elif message.text=="🛡 СНАРЯЖЕНИЕ": await message.answer("🛡 Снаряжение загружается",reply_markup=main_keyboard())
-    elif message.text=="🏰 БАШНЯ": await message.answer("🏰 Башня",reply_markup=main_keyboard())
+        if p:
+            await message.answer(f"🧙 Герой\n❤️ HP: {p['hp']}\n⚔️ Урон: {p['damage']}\n🛡 Броня: {p.get('armor',0)}",reply_markup=main_keyboard())
+    elif message.text=="🛡 СНАРЯЖЕНИЕ":
+        await message.answer("🛡 Снаряжение\n\n⚔️ Оружие: нет\n🛡 Броня: базовая\n✨ Улучшения скоро",reply_markup=main_keyboard())
+    elif message.text=="🏰 БАШНЯ":
+        await message.answer(f"🏰 Башня\nЭтаж: {p['floor'] if p else 1}",reply_markup=main_keyboard())
 
 async def main():
     init_db()
     await bot.set_my_commands([BotCommand(command="start",description="🎮 Запуск")])
     await dp.start_polling(bot)
 
-if __name__=="__main__": asyncio.run(main())
+if __name__=="__main__":
+    asyncio.run(main())
