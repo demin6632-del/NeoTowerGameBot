@@ -9,9 +9,11 @@ from config import BOT_TOKEN
 from database import init_db, get_player, create_player, add_reward, next_floor
 from keyboards import heroes_keyboard, main_keyboard, battle_keyboard
 from heroes import HEROES
-from inventory import inventory_text, starter_inventory
-from battle import fight
+from inventory import inventory_text
+from battle import start_battle, battle_turn
 from error_handler import setup_error_handler
+
+active_battles = {}
 
 class HealthHandler(BaseHTTPRequestHandler):
     def do_GET(self):
@@ -31,50 +33,62 @@ async def start(message: Message):
 
 @dp.callback_query(lambda c:c.data.startswith("hero_"))
 async def choose_hero(callback:CallbackQuery):
-    h=HEROES[callback.data.replace("hero_","")]
-    create_player(callback.from_user.id,callback.from_user.first_name,callback.data.replace("hero_",""),h["hp"],h["damage"],h["armor"])
+    key=callback.data.replace("hero_","")
+    h=HEROES[key]
+    create_player(callback.from_user.id,callback.from_user.first_name,key,h["hp"],h["damage"],h["armor"])
     await callback.message.answer(f"🧙 {h['name']} выбран!",reply_markup=main_keyboard())
     await callback.answer()
 
 async def run_fight(uid,message):
     p=get_player(uid)
     if not p:
-        await message.answer("Выбери героя через /start"); return
-    await message.answer(f"⚔️ Бой начался!\n\n🤖 Враг на этаже {p['floor']}\n\nВыбери действие:",reply_markup=battle_keyboard())
+        await message.answer("Сначала выбери героя через /start")
+        return
+    if uid not in active_battles:
+        active_battles[uid]=start_battle(p,p['floor'])
+    state=active_battles[uid]
+    await message.answer(f"⚔️ Бой\n\n❤️ Герой: {state['player_hp']}\n🤖 Враг: {state['enemy_hp']}\n\nВыбери действие",reply_markup=battle_keyboard())
 
 @dp.callback_query(lambda c:c.data.startswith("battle_"))
 async def battle_action(callback:CallbackQuery):
-    p=get_player(callback.from_user.id)
-    if not p: return
-    if callback.data=="battle_escape":
-        await callback.message.answer("🏃 Ты сбежал",reply_markup=main_keyboard())
+    uid=callback.from_user.id
+    p=get_player(uid)
+    if not p:
+        await callback.answer()
+        return
+    if uid not in active_battles:
+        active_battles[uid]=start_battle(p,p['floor'])
+    action=callback.data.replace("battle_","")
+    if action=="escape":
+        active_battles.pop(uid,None)
+        await callback.message.answer("🏃 Побег",reply_markup=main_keyboard())
     else:
-        result=fight(p,p['floor'])
-        text="⚔️ Результат боя:\n\n"+"\n".join(result['log'])
-        if result['win']:
-            add_reward(callback.from_user.id,100,result['reward'],"iron_sword")
-            next_floor(callback.from_user.id)
-            text+="\n\n🏆 Победа!"
-        else: text+="\n\n💀 Поражение"
-        await callback.message.answer(text,reply_markup=main_keyboard())
+        state=battle_turn(p,active_battles[uid],action)
+        if state['enemy_hp']<=0:
+            add_reward(uid,100,state['enemy'].get('credits',100),"iron_sword")
+            next_floor(uid)
+            active_battles.pop(uid,None)
+            await callback.message.answer("🏆 Победа!",reply_markup=main_keyboard())
+        elif state['player_hp']<=0:
+            active_battles.pop(uid,None)
+            await callback.message.answer("💀 Поражение",reply_markup=main_keyboard())
+        else:
+            await callback.message.answer(f"⚔️ Ход боя\n❤️ {state['player_hp']} HP\n🤖 {state['enemy_hp']} HP",reply_markup=battle_keyboard())
     await callback.answer()
 
 @dp.message()
 async def menu(message:Message):
     if message.text=="⚔️ БОЙ": await run_fight(message.from_user.id,message)
-    elif message.text=="🎒 РЮКЗАК": await message.answer(inventory_text(starter_inventory()),reply_markup=main_keyboard())
+    elif message.text=="🎒 РЮКЗАК": await message.answer(inventory_text([]),reply_markup=main_keyboard())
+    elif message.text=="🧙 ГЕРОЙ":
+        p=get_player(message.from_user.id)
+        await message.answer(f"🧙 Герой\n❤️ HP: {p['hp']}\n⚔️ Урон: {p['damage']}",reply_markup=main_keyboard())
+    elif message.text=="🛡 СНАРЯЖЕНИЕ": await message.answer("🛡 Снаряжение загружается",reply_markup=main_keyboard())
     elif message.text=="🏰 БАШНЯ": await message.answer("🏰 Башня",reply_markup=main_keyboard())
-    elif message.text=="🧙 ГЕРОЙ": await message.answer("🧙 Герой",reply_markup=main_keyboard())
-    elif message.text=="🛡 СНАРЯЖЕНИЕ": await message.answer("🛡 Снаряжение",reply_markup=main_keyboard())
-    elif message.text=="🛒 МАГАЗИН": await message.answer("🛒 Магазин",reply_markup=main_keyboard())
-    elif message.text=="🏆 РЕЙТИНГ": await message.answer("🏆 Рейтинг",reply_markup=main_keyboard())
-
-@dp.message(Command("fight"))
-async def fight_cmd(message:Message): await run_fight(message.from_user.id,message)
 
 async def main():
     init_db()
-    await bot.set_my_commands([BotCommand(command="start",description="🎮 Запуск"),BotCommand(command="fight",description="⚔️ Бой")])
+    await bot.set_my_commands([BotCommand(command="start",description="🎮 Запуск")])
     await dp.start_polling(bot)
 
 if __name__=="__main__": asyncio.run(main())
