@@ -4,12 +4,13 @@ from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMar
 def main_keyboard():
     return ReplyKeyboardMarkup(
         keyboard=[
-            [KeyboardButton(text="🏰 БАШНЯ"), KeyboardButton(text="⚔️ БОЙ")],
-            [KeyboardButton(text="🧙 ГЕРОЙ"), KeyboardButton(text="🎒 РЮКЗАК")],
-            [KeyboardButton(text="🛡 СНАРЯЖЕНИЕ")],
-            [KeyboardButton(text="🛒 МАГАЗИН"), KeyboardButton(text="🏆 РЕЙТИНГ")]
+            [KeyboardButton(text="⚔️ БОЙ"), KeyboardButton(text="🏰 БАШНЯ")],
+            [KeyboardButton(text="🧙 ГЕРОЙ"), KeyboardButton(text="🛡 СНАРЯЖЕНИЕ")],
+            [KeyboardButton(text="🎒 РЮКЗАК"), KeyboardButton(text="🛒 МАГАЗИН")],
+            [KeyboardButton(text="🏆 РЕЙТИНГ")]
         ],
-        resize_keyboard=True
+        resize_keyboard=True,
+        input_field_placeholder="Выбери действие..."
     )
 
 
