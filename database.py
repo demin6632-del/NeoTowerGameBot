@@ -34,34 +34,69 @@ def init_db():
 
 def get_player(user_id):
     db = connect()
-    player = db.execute("SELECT * FROM players WHERE id=?", (user_id,)).fetchone()
+    player = db.execute(
+        "SELECT * FROM players WHERE id=?",
+        (user_id,)
+    ).fetchone()
     db.close()
     return player
 
 
 def create_player(user_id, name, hero, hp, damage, armor):
     db = connect()
+
+    exists = db.execute(
+        "SELECT id FROM players WHERE id=?",
+        (user_id,)
+    ).fetchone()
+
+    if exists:
+        db.close()
+        return False
+
     db.execute(
         "INSERT INTO players VALUES(?,?,?,?,?,?,?,?,?,?,?,?)",
         (user_id, name, hero, hp, damage, armor, 1, 0, 1, 0, "iron_sword", "")
     )
     db.commit()
     db.close()
+    return True
 
 
 def add_reward(user_id, xp, credits, item=None):
     db = connect()
     player = get_player(user_id)
     if not player:
+        db.close()
         return
 
     inventory = player["inventory"] or ""
-    if item:
-        inventory = inventory + "," + item
+    if item and item not in inventory:
+        inventory = inventory + ("," if inventory else "") + item
 
     db.execute(
         "UPDATE players SET xp=?, credits=?, inventory=? WHERE id=?",
         (player["xp"] + xp, player["credits"] + credits, inventory, user_id)
+    )
+    db.commit()
+    db.close()
+
+
+def update_stats(user_id, hp=None, damage=None, armor=None):
+    db = connect()
+    player = get_player(user_id)
+    if not player:
+        db.close()
+        return
+
+    db.execute(
+        "UPDATE players SET hp=?, damage=?, armor=? WHERE id=?",
+        (
+            hp if hp is not None else player["hp"],
+            damage if damage is not None else player["damage"],
+            armor if armor is not None else player["armor"],
+            user_id
+        )
     )
     db.commit()
     db.close()
@@ -79,9 +114,7 @@ def equip_item(user_id, item):
 
 def get_equipment(user_id):
     player = get_player(user_id)
-    if player:
-        return player["equipment"]
-    return ""
+    return player["equipment"] if player else ""
 
 
 def next_floor(user_id):
