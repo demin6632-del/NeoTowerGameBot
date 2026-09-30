@@ -35,25 +35,49 @@ async def fight(message: Message):
     enemy_hp = enemy["hp"] - damage
 
     if enemy_hp <= 0:
-        await message.answer(f"⚔️ Победа!\n\nТы победил {enemy['enemy']}\n+{enemy['credits']} кредитов")
+        await message.answer(
+            f"⚔️ Победа!\n\n"
+            f"Ты победил {enemy['enemy']}\n"
+            f"+{enemy['credits']} кредитов\n"
+            f"+{enemy['xp']} XP"
+        )
     else:
         taken = enemy_attack(enemy["damage"], player["armor"])
-        await message.answer(f"⚔️ Бой продолжается!\n\nТы нанёс {damage} урона.\nВраг нанёс {taken} урона.")
+        await message.answer(
+            f"⚔️ Бой продолжается!\n\n"
+            f"Ты нанёс {damage} урона.\n"
+            f"Враг нанёс {taken} урона."
+        )
 
 
 @dp.callback_query(lambda c: c.data.startswith("hero_"))
 async def choose_hero(callback: CallbackQuery):
     hero_id = callback.data.replace("hero_", "")
     hero = HEROES[hero_id]
-    create_player(callback.from_user.id, callback.from_user.first_name, hero_id, hero["hp"], hero["damage"], hero["armor"])
-    await callback.message.edit_text(f"{hero['name']} выбран!", reply_markup=main_keyboard())
+    create_player(
+        callback.from_user.id,
+        callback.from_user.first_name,
+        hero_id,
+        hero["hp"],
+        hero["damage"],
+        hero["armor"]
+    )
+    await callback.message.edit_text(
+        f"{hero['name']} выбран!",
+        reply_markup=main_keyboard()
+    )
     await callback.answer()
 
 
 @dp.callback_query(lambda c: c.data == "profile")
 async def profile(callback: CallbackQuery):
     player = get_player(callback.from_user.id)
-    await callback.message.answer(f"👤 Уровень: {player['level']}\nXP: {player['xp']}\nЭтаж: {player['floor']}\nКредиты: {player['credits']}")
+    await callback.message.answer(
+        f"👤 Уровень: {player['level']}\n"
+        f"XP: {player['xp']}\n"
+        f"Этаж: {player['floor']}\n"
+        f"Кредиты: {player['credits']}"
+    )
 
 
 @dp.callback_query(lambda c: c.data == "tower")
@@ -63,12 +87,12 @@ async def tower(callback: CallbackQuery):
 
 @dp.callback_query(lambda c: c.data == "inventory")
 async def inventory(callback: CallbackQuery):
-    await callback.message.answer("🎒 Инвентарь подключается")
+    await callback.message.answer("🎒 Инвентарь готовится к подключению")
 
 
 @dp.callback_query(lambda c: c.data == "equipment")
 async def equipment(callback: CallbackQuery):
-    await callback.message.answer("🛡 Экипировка подключается")
+    await callback.message.answer("🛡 Экипировка готовится к подключению")
 
 
 async def main():
