@@ -1,25 +1,15 @@
-from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMarkup, InlineKeyboardButton
 
 
 def main_keyboard():
-    return InlineKeyboardMarkup(
-        inline_keyboard=[
-            [
-                InlineKeyboardButton(text="🏰 БАШНЯ", callback_data="tower"),
-                InlineKeyboardButton(text="⚔️ БОЙ", callback_data="fight")
-            ],
-            [
-                InlineKeyboardButton(text="🧙 ГЕРОЙ", callback_data="profile"),
-                InlineKeyboardButton(text="🎒 РЮКЗАК", callback_data="inventory")
-            ],
-            [
-                InlineKeyboardButton(text="🛡 СНАРЯЖЕНИЕ", callback_data="equipment")
-            ],
-            [
-                InlineKeyboardButton(text="🛒 МАГАЗИН", callback_data="shop"),
-                InlineKeyboardButton(text="🏆 РЕЙТИНГ", callback_data="rating")
-            ]
-        ]
+    return ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text="🏰 БАШНЯ"), KeyboardButton(text="⚔️ БОЙ")],
+            [KeyboardButton(text="🧙 ГЕРОЙ"), KeyboardButton(text="🎒 РЮКЗАК")],
+            [KeyboardButton(text="🛡 СНАРЯЖЕНИЕ")],
+            [KeyboardButton(text="🛒 МАГАЗИН"), KeyboardButton(text="🏆 РЕЙТИНГ")]
+        ],
+        resize_keyboard=True
     )
 
 
