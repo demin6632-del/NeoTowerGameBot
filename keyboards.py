@@ -14,19 +14,17 @@ def main_keyboard():
 
 
 def heroes_keyboard():
-    return InlineKeyboardMarkup(
-        inline_keyboard=[
-            [InlineKeyboardButton(text="🤖 КИБОРГ", callback_data="hero_cyborg")],
-            [InlineKeyboardButton(text="🥷 НИНДЗЯ", callback_data="hero_ninja")],
-            [InlineKeyboardButton(text="🔮 ПСИОНИК", callback_data="hero_psionic")]
-        ]
-    )
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="🤖 КИБОРГ", callback_data="hero_cyborg")],
+        [InlineKeyboardButton(text="🥷 НИНДЗЯ", callback_data="hero_ninja")],
+        [InlineKeyboardButton(text="🔮 ПСИОНИК", callback_data="hero_psionic")]
+    ])
 
 
 def battle_keyboard():
-    return InlineKeyboardMarkup(
-        inline_keyboard=[
-            [InlineKeyboardButton(text="⚔️ АТАКОВАТЬ", callback_data="attack")],
-            [InlineKeyboardButton(text="🏃 ОТСТУПИТЬ", callback_data="escape")]
-        ]
-    )
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="⚔️ АТАКА", callback_data="battle_attack")],
+        [InlineKeyboardButton(text="🛡 ЗАЩИТА", callback_data="battle_defend")],
+        [InlineKeyboardButton(text="💊 ЗЕЛЬЕ", callback_data="battle_potion")],
+        [InlineKeyboardButton(text="🏃 ПОБЕГ", callback_data="battle_escape")]
+    ])
