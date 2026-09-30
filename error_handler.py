@@ -8,3 +8,7 @@ router = Router()
 async def error_handler(event: ErrorEvent):
     print(f"BOT ERROR: {event.exception}")
     return True
+
+
+def setup_error_handler(dp):
+    dp.include_router(router)
