@@ -5,10 +5,11 @@ from aiogram.filters import Command
 from aiogram.types import Message, CallbackQuery
 
 from config import BOT_TOKEN
-from database import init_db, get_player, create_player
+from database import init_db, get_player, create_player, add_reward, next_floor
 from keyboards import heroes_keyboard, main_keyboard
 from heroes import HEROES
 from inventory import inventory_text, starter_inventory
+from battle import fight
 
 bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher()
@@ -51,6 +52,27 @@ async def profile(callback: CallbackQuery):
 @dp.callback_query(lambda c: c.data == "tower")
 async def tower(callback: CallbackQuery):
     await callback.message.answer("🏢 Башня. Первый этаж готов. Используй /fight")
+
+
+@dp.message(Command("fight"))
+async def fight_command(message: Message):
+    player = get_player(message.from_user.id)
+
+    if not player:
+        await message.answer("Сначала выбери героя через /start")
+        return
+
+    result = fight(player, player["floor"])
+    text = "⚔️ Бой завершён\n\n" + "\n".join(result["log"])
+
+    if result["win"]:
+        add_reward(message.from_user.id, 100, result["reward"], "iron_sword")
+        next_floor(message.from_user.id)
+        text += "\n\n🏆 Победа!\n+100 XP"
+    else:
+        text += "\n\n💀 Поражение"
+
+    await message.answer(text)
 
 
 async def main():
