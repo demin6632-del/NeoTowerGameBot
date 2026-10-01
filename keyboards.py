@@ -29,3 +29,14 @@ def battle_keyboard():
         [InlineKeyboardButton(text="💊 ЗЕЛЬЕ", callback_data="battle_potion")],
         [InlineKeyboardButton(text="🏃 ПОБЕГ", callback_data="battle_escape")]
     ])
+
+
+def equipment_keyboard(items):
+    buttons = []
+    for item in items:
+        buttons.append([InlineKeyboardButton(
+            text=f"⚙️ Экипировать {item.replace('_', ' ')}",
+            callback_data=f"equip_{item}"
+        )])
+    buttons.append([InlineKeyboardButton(text="❌ Снять экипировку", callback_data="unequip")])
+    return InlineKeyboardMarkup(inline_keyboard=buttons)
