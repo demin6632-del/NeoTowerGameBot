@@ -113,7 +113,7 @@ async def run_fight(uid, message):
         f"👤 {p['name']}\n"
         f"❤️ Герой: {state['player_hp']} HP\n"
         f"🤖 {state['enemy']['name']}: {state['enemy_hp']} HP\n\n"
-        "Выбери действие:",
+        "Выбери действие внизу:",
         reply_markup=battle_keyboard()
     )
 
@@ -124,7 +124,6 @@ async def equip_action(callback: CallbackQuery):
     item = callback.data.replace("equip_", "", 1)
 
     if equip_item(uid, item):
-        p = get_player(uid)
         items = get_inventory(uid)
         equipped = get_equipment(uid)
         await callback.message.answer(
@@ -149,61 +148,69 @@ async def unequip_action(callback: CallbackQuery):
     await callback.answer("Экипировка снята")
 
 
-@dp.callback_query(lambda c: c.data.startswith("battle_"))
-async def battle_action(callback: CallbackQuery):
-    uid = callback.from_user.id
+async def process_battle_action(uid, message, action):
     p = get_player(uid)
 
     if not p:
-        await callback.answer()
+        await message.answer(
+            "Сначала выбери героя через /start",
+            reply_markup=heroes_keyboard()
+        )
         return
 
     if uid not in active_battles:
         active_battles[uid] = start_battle(p, p["floor"])
 
-    action = callback.data.replace("battle_", "")
     state = active_battles[uid]
 
     if action == "escape":
         active_battles.pop(uid, None)
-        await callback.message.answer(
+        await message.answer(
             "🏃 Побег из боя.",
             reply_markup=main_keyboard()
         )
+        return
+
+    state = battle_turn(p, state, action)
+
+    if state["enemy_hp"] <= 0:
+        reward = state["enemy"].get("reward", 100)
+        add_reward(uid, 100, reward, "iron_sword")
+        next_floor(uid)
+        active_battles.pop(uid, None)
+
+        await message.answer(
+            f"🏆 ПОБЕДА!\n\n"
+            f"💰 Награда: +{reward} кредитов\n"
+            "⭐ XP: +100\n"
+            "⬆️ Следующий этаж открыт.",
+            reply_markup=main_keyboard()
+        )
+
+    elif state["player_hp"] <= 0:
+        active_battles.pop(uid, None)
+
+        await message.answer(
+            "💀 ПОРАЖЕНИЕ\n\n"
+            "Герой восстановится перед следующим боем.",
+            reply_markup=main_keyboard()
+        )
+
     else:
-        state = battle_turn(p, state, action)
+        await message.answer(
+            f"⚔️ БОЙ ПРОДОЛЖАЕТСЯ\n\n"
+            f"❤️ Герой: {state['player_hp']} HP\n"
+            f"🤖 Враг: {state['enemy_hp']} HP\n\n"
+            "Выбери действие внизу:",
+            reply_markup=battle_keyboard()
+        )
 
-        if state["enemy_hp"] <= 0:
-            reward = state["enemy"].get("reward", 100)
-            add_reward(uid, 100, reward, "iron_sword")
-            next_floor(uid)
-            active_battles.pop(uid, None)
 
-            await callback.message.answer(
-                f"🏆 ПОБЕДА!\n\n"
-                f"💰 Награда: +{reward} кредитов\n"
-                f"⭐ XP: +100\n"
-                "⬆️ Следующий этаж открыт.",
-                reply_markup=main_keyboard()
-            )
-
-        elif state["player_hp"] <= 0:
-            active_battles.pop(uid, None)
-
-            await callback.message.answer(
-                "💀 ПОРАЖЕНИЕ\n\n"
-                "Герой восстановится перед следующим боем.",
-                reply_markup=main_keyboard()
-            )
-
-        else:
-            await callback.message.answer(
-                f"⚔️ БОЙ ПРОДОЛЖАЕТСЯ\n\n"
-                f"❤️ Герой: {state['player_hp']} HP\n"
-                f"🤖 Враг: {state['enemy_hp']} HP",
-                reply_markup=battle_keyboard()
-            )
-
+# Оставляем callback-обработчик для старых сообщений с inline-кнопками.
+@dp.callback_query(lambda c: c.data.startswith("battle_"))
+async def battle_action_callback(callback: CallbackQuery):
+    action = callback.data.replace("battle_", "", 1)
+    await process_battle_action(callback.from_user.id, callback.message, action)
     await callback.answer()
 
 
@@ -213,6 +220,18 @@ async def menu(message: Message):
 
     if message.text == "⚔️ БОЙ":
         await run_fight(message.from_user.id, message)
+
+    elif message.text == "⚔️ АТАКА":
+        await process_battle_action(message.from_user.id, message, "attack")
+
+    elif message.text == "🛡 ЗАЩИТА":
+        await process_battle_action(message.from_user.id, message, "defend")
+
+    elif message.text == "💊 ЗЕЛЬЕ":
+        await process_battle_action(message.from_user.id, message, "potion")
+
+    elif message.text == "🏃 ПОБЕГ":
+        await process_battle_action(message.from_user.id, message, "escape")
 
     elif message.text == "🎒 РЮКЗАК":
         items = get_inventory(message.from_user.id)
