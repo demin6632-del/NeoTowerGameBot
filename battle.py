@@ -4,17 +4,18 @@ from tower import TOWER
 
 
 def create_enemy(floor):
-    return TOWER.get(floor, TOWER[1]).copy()
+    return TOWER.get(floor, TOWER[max(TOWER.keys())]).copy()
 
 
 def get_equipment_bonus(player):
     equipment = player["equipment"] if "equipment" in player.keys() else ""
     bonus = 0
 
-    if "sword" in equipment:
-        bonus += 10
-    if "armor" in equipment:
-        bonus += 5
+    for item in (equipment or "").split(","):
+        if item == "iron_sword":
+            bonus += 10
+        elif item == "steel_armor":
+            bonus += 5
 
     return bonus
 
@@ -53,9 +54,10 @@ def battle_turn(player, state, action):
         return state
 
     elif action == "potion":
-        heal = 30
-        state["player_hp"] += heal
-        log.append(f"💊 Восстановлено {heal} HP")
+        max_hp = player["hp"]
+        old_hp = state["player_hp"]
+        state["player_hp"] = min(max_hp, old_hp + 30)
+        log.append(f"💊 Восстановлено {state['player_hp'] - old_hp} HP")
 
     if state["enemy_hp"] > 0:
         damage = enemy_attack(state["enemy"]["damage"], player["armor"])
@@ -74,6 +76,6 @@ def fight(player, floor):
     return {
         "win": state["player_hp"] > 0,
         "hp": state["player_hp"],
-        "reward": state["enemy"].get("credits", 0) if state["player_hp"] > 0 else 0,
+        "reward": state["enemy"].get("reward", 0) if state["player_hp"] > 0 else 0,
         "log": state["log"]
     }
