@@ -1,11 +1,12 @@
 import asyncio
 import os
+from pathlib import Path
 from threading import Thread
 from http.server import HTTPServer, BaseHTTPRequestHandler
 
 from aiogram import Bot, Dispatcher
 from aiogram.filters import Command
-from aiogram.types import Message, CallbackQuery, BotCommand
+from aiogram.types import Message, CallbackQuery, BotCommand, FSInputFile
 
 from config import BOT_TOKEN
 from database import (
@@ -22,6 +23,9 @@ from battle import start_battle, battle_turn
 from error_handler import setup_error_handler
 
 active_battles = {}
+
+ASSET_DIR = Path(__file__).resolve().parent / "assets"
+UI_MOCKUP = ASSET_DIR / "neo_tower_ui.jpg"
 
 
 class HealthHandler(BaseHTTPRequestHandler):
@@ -47,19 +51,32 @@ dp = Dispatcher()
 setup_error_handler(dp)
 
 
+async def visual_answer(message: Message, text: str, reply_markup=None):
+    if UI_MOCKUP.exists():
+        await message.answer_photo(
+            FSInputFile(UI_MOCKUP),
+            caption=text,
+            reply_markup=reply_markup
+        )
+    else:
+        await message.answer(text, reply_markup=reply_markup)
+
+
 @dp.message(Command("start"))
 async def start(message: Message):
     player = get_player(message.from_user.id)
 
     if player:
-        await message.answer(
+        await visual_answer(
+            message,
             "🏙️ NEO TOWER\n\nС возвращением! Башня ждёт.",
-            reply_markup=main_keyboard()
+            main_keyboard()
         )
     else:
-        await message.answer(
+        await visual_answer(
+            message,
             "🏙️ NEO TOWER\n\nВыбери героя:",
-            reply_markup=heroes_keyboard()
+            heroes_keyboard()
         )
 
 
@@ -100,9 +117,10 @@ async def run_fight(uid, message):
     p = get_player(uid)
 
     if not p:
-        await message.answer(
+        await visual_answer(
+            message,
             "Сначала выбери героя через /start",
-            reply_markup=heroes_keyboard()
+            heroes_keyboard()
         )
         return
 
@@ -116,13 +134,14 @@ async def run_fight(uid, message):
 
     active_battles[uid] = state
 
-    await message.answer(
+    await visual_answer(
+        message,
         f"⚔️ БОЙ — этаж {p['floor']}\n\n"
         f"👤 {p['name']}\n"
         f"❤️ Герой: {state['player_hp']} HP\n"
         f"🤖 {state['enemy']['name']}: {state['enemy_hp']} HP\n\n"
         "Выбери действие внизу:",
-        reply_markup=battle_keyboard()
+        battle_keyboard()
     )
 
 
@@ -130,9 +149,10 @@ async def process_battle_action(uid, message, action):
     p = get_player(uid)
 
     if not p:
-        await message.answer(
+        await visual_answer(
+            message,
             "Сначала выбери героя через /start",
-            reply_markup=heroes_keyboard()
+            heroes_keyboard()
         )
         return
 
@@ -148,10 +168,7 @@ async def process_battle_action(uid, message, action):
     if action == "escape":
         active_battles.pop(uid, None)
         delete_battle_session(uid)
-        await message.answer(
-            "🏃 Побег из боя.",
-            reply_markup=main_keyboard()
-        )
+        await visual_answer(message, "🏃 Побег из боя.", main_keyboard())
         return
 
     state = battle_turn(p, state, action)
@@ -164,32 +181,35 @@ async def process_battle_action(uid, message, action):
         active_battles.pop(uid, None)
         delete_battle_session(uid)
 
-        await message.answer(
+        await visual_answer(
+            message,
             f"🏆 ПОБЕДА!\n\n"
             f"💰 Награда: +{reward} кредитов\n"
             "⭐ XP: +100\n"
             "⬆️ Следующий этаж открыт.",
-            reply_markup=main_keyboard()
+            main_keyboard()
         )
 
     elif state["player_hp"] <= 0:
         active_battles.pop(uid, None)
         delete_battle_session(uid)
 
-        await message.answer(
+        await visual_answer(
+            message,
             "💀 ПОРАЖЕНИЕ\n\n"
             "Герой восстановится перед следующим боем.",
-            reply_markup=main_keyboard()
+            main_keyboard()
         )
 
     else:
         save_battle_session(uid, state)
-        await message.answer(
+        await visual_answer(
+            message,
             f"⚔️ БОЙ ПРОДОЛЖАЕТСЯ\n\n"
             f"❤️ Герой: {state['player_hp']} HP\n"
             f"🤖 Враг: {state['enemy_hp']} HP\n\n"
             "Выбери действие внизу:",
-            reply_markup=battle_keyboard()
+            battle_keyboard()
         )
 
 
@@ -211,9 +231,10 @@ async def process_equipment_action(uid, message, text):
         item = item_map[text]
         if equip_item(uid, item):
             equipped = get_equipment(uid)
-            await message.answer(
+            await visual_answer(
+                message,
                 equipment_text(items, equipped),
-                reply_markup=equipment_keyboard(items)
+                equipment_keyboard(items)
             )
         else:
             await message.answer(
@@ -224,17 +245,15 @@ async def process_equipment_action(uid, message, text):
 
     if text == "❌ Снять экипировку":
         unequip_item(uid)
-        await message.answer(
+        await visual_answer(
+            message,
             equipment_text(items, ""),
-            reply_markup=equipment_keyboard(items)
+            equipment_keyboard(items)
         )
         return
 
     if text == "🔙 В главное меню":
-        await message.answer(
-            "🏙️ Главное меню",
-            reply_markup=main_keyboard()
-        )
+        await visual_answer(message, "🏙️ Главное меню", main_keyboard())
 
 
 @dp.callback_query(lambda c: c.data and c.data.startswith("equip_"))
@@ -245,9 +264,10 @@ async def equip_action(callback: CallbackQuery):
     if equip_item(uid, item):
         items = get_inventory(uid)
         equipped = get_equipment(uid)
-        await callback.message.answer(
+        await visual_answer(
+            callback.message,
             equipment_text(items, equipped),
-            reply_markup=equipment_keyboard(items)
+            equipment_keyboard(items)
         )
         await callback.answer("Экипировано")
     else:
@@ -260,9 +280,10 @@ async def unequip_action(callback: CallbackQuery):
     unequip_item(uid)
     items = get_inventory(uid)
 
-    await callback.message.answer(
+    await visual_answer(
+        callback.message,
         equipment_text(items, ""),
-        reply_markup=equipment_keyboard(items)
+        equipment_keyboard(items)
     )
     await callback.answer("Экипировка снята")
 
@@ -297,14 +318,16 @@ async def menu(message: Message):
 
     elif message.text == "🎒 РЮКЗАК":
         items = get_inventory(message.from_user.id)
-        await message.answer(
+        await visual_answer(
+            message,
             inventory_text(items),
-            reply_markup=main_keyboard()
+            main_keyboard()
         )
 
     elif message.text == "🧙 ГЕРОЙ":
         if p:
-            await message.answer(
+            await visual_answer(
+                message,
                 f"🧙 ГЕРОЙ\n\n"
                 f"❤️ HP: {p['hp']}\n"
                 f"⚔️ Урон: {p['damage']}\n"
@@ -312,50 +335,56 @@ async def menu(message: Message):
                 f"🏰 Этаж: {p['floor']}\n"
                 f"⭐ XP: {p['xp']}\n"
                 f"💰 Кредиты: {p['credits']}",
-                reply_markup=main_keyboard()
+                main_keyboard()
             )
         else:
-            await message.answer(
+            await visual_answer(
+                message,
                 "Сначала выбери героя через /start",
-                reply_markup=heroes_keyboard()
+                heroes_keyboard()
             )
 
     elif message.text == "🛡 СНАРЯЖЕНИЕ":
         if p:
             items = get_inventory(message.from_user.id)
             equipped = get_equipment(message.from_user.id)
-            await message.answer(
+            await visual_answer(
+                message,
                 equipment_text(items, equipped),
-                reply_markup=equipment_keyboard(items)
+                equipment_keyboard(items)
             )
         else:
-            await message.answer(
+            await visual_answer(
+                message,
                 "Сначала выбери героя через /start",
-                reply_markup=heroes_keyboard()
+                heroes_keyboard()
             )
 
     elif message.text == "🏰 БАШНЯ":
-        await message.answer(
+        await visual_answer(
+            message,
             f"🏰 БАШНЯ\n\n"
             f"Текущий этаж: {p['floor'] if p else 1}\n"
             "Победи врага, чтобы подняться выше.",
-            reply_markup=main_keyboard()
+            main_keyboard()
         )
 
     elif message.text == "🛒 МАГАЗИН":
-        await message.answer(
+        await visual_answer(
+            message,
             "🛒 МАГАЗИН\n\n"
             "⚔️ Железный меч — уже доступен\n"
             "🛡 Стальная броня — скоро\n\n"
             "Магазин будет расширяться.",
-            reply_markup=main_keyboard()
+            main_keyboard()
         )
 
     elif message.text == "🏆 РЕЙТИНГ":
-        await message.answer(
+        await visual_answer(
+            message,
             "🏆 РЕЙТИНГ\n\n"
             "Таблица лидеров будет добавлена следующим обновлением.",
-            reply_markup=main_keyboard()
+            main_keyboard()
         )
 
 
