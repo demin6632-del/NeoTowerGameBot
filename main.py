@@ -9,7 +9,7 @@ from config import BOT_TOKEN
 from database import init_db, get_player, create_player, add_reward, next_floor
 from keyboards import heroes_keyboard, main_keyboard, battle_keyboard
 from heroes import HEROES
-from inventory import inventory_text
+from inventory import inventory_text, equipment_text, starter_inventory
 from battle import start_battle, battle_turn
 from error_handler import setup_error_handler
 
@@ -82,15 +82,16 @@ async def battle_action(callback:CallbackQuery):
 @dp.message()
 async def menu(message:Message):
     p=get_player(message.from_user.id)
+    items=starter_inventory()
     if message.text=="⚔️ БОЙ":
         await run_fight(message.from_user.id,message)
     elif message.text=="🎒 РЮКЗАК":
-        await message.answer(inventory_text([]),reply_markup=main_keyboard())
+        await message.answer(inventory_text(items),reply_markup=main_keyboard())
     elif message.text=="🧙 ГЕРОЙ":
         if p:
             await message.answer(f"🧙 Герой\n❤️ HP: {p['hp']}\n⚔️ Урон: {p['damage']}\n🛡 Броня: {p.get('armor',0)}",reply_markup=main_keyboard())
     elif message.text=="🛡 СНАРЯЖЕНИЕ":
-        await message.answer("🛡 Снаряжение\n\n⚔️ Оружие: нет\n🛡 Броня: базовая\n✨ Улучшения скоро",reply_markup=main_keyboard())
+        await message.answer(equipment_text(items),reply_markup=main_keyboard())
     elif message.text=="🏰 БАШНЯ":
         await message.answer(f"🏰 Башня\nЭтаж: {p['floor'] if p else 1}",reply_markup=main_keyboard())
 
