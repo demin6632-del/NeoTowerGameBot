@@ -23,12 +23,14 @@ def heroes_keyboard():
 
 
 def battle_keyboard():
-    return InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="⚔️ АТАКА", callback_data="battle_attack")],
-        [InlineKeyboardButton(text="🛡 ЗАЩИТА", callback_data="battle_defend")],
-        [InlineKeyboardButton(text="💊 ЗЕЛЬЕ", callback_data="battle_potion")],
-        [InlineKeyboardButton(text="🏃 ПОБЕГ", callback_data="battle_escape")]
-    ])
+    return ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text="⚔️ АТАКА"), KeyboardButton(text="🛡 ЗАЩИТА")],
+            [KeyboardButton(text="💊 ЗЕЛЬЕ"), KeyboardButton(text="🏃 ПОБЕГ")]
+        ],
+        resize_keyboard=True,
+        input_field_placeholder="Выбери действие в бою..."
+    )
 
 
 def equipment_keyboard(items):
