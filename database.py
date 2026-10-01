@@ -108,6 +108,93 @@ def add_reward(user_id, xp, credits, item=None):
         db.close()
 
 
+def spend_credits(user_id, amount):
+    db = connect()
+    try:
+        with db:
+            row = db.execute("SELECT credits FROM players WHERE id=?", (user_id,)).fetchone()
+            if not row or row["credits"] < amount:
+                return False
+            db.execute("UPDATE players SET credits=credits-? WHERE id=?", (amount, user_id))
+            return True
+    finally:
+        db.close()
+
+
+def add_item(user_id, item):
+    db = connect()
+    try:
+        with db:
+            player = db.execute("SELECT inventory FROM players WHERE id=?", (user_id,)).fetchone()
+            if not player:
+                return False
+            items = [x for x in (player["inventory"] or "").split(",") if x]
+            if item in items:
+                return False
+            items.append(item)
+            db.execute("UPDATE players SET inventory=? WHERE id=?", (",".join(items), user_id))
+            return True
+    finally:
+        db.close()
+
+
+def remove_item(user_id, item):
+    db = connect()
+    try:
+        with db:
+            player = db.execute("SELECT inventory,equipment FROM players WHERE id=?", (user_id,)).fetchone()
+            if not player:
+                return False
+            items = [x for x in (player["inventory"] or "").split(",") if x]
+            if item not in items:
+                return False
+            items.remove(item)
+            equipment = player["equipment"] or ""
+            if equipment == item:
+                equipment = ""
+            db.execute(
+                "UPDATE players SET inventory=?, equipment=? WHERE id=?",
+                (",".join(items), equipment, user_id)
+            )
+            return True
+    finally:
+        db.close()
+
+
+def get_daily_claim(user_id):
+    db = connect()
+    try:
+        row = db.execute("SELECT day_key FROM daily_rewards WHERE user_id=?", (user_id,)).fetchone()
+        return row["day_key"] if row else None
+    finally:
+        db.close()
+
+
+def set_daily_claim(user_id, day_key):
+    db = connect()
+    try:
+        with db:
+            db.execute(
+                "INSERT INTO daily_rewards(user_id,day_key) VALUES(?,?) "
+                "ON CONFLICT(user_id) DO UPDATE SET day_key=excluded.day_key",
+                (user_id, day_key)
+            )
+    finally:
+        db.close()
+
+
+def top_players(limit=10):
+    db = connect()
+    try:
+        return db.execute(
+            "SELECT name, hero, level, xp, floor, credits FROM players "
+            "ORDER BY floor DESC, level DESC, xp DESC, credits DESC LIMIT ?",
+            (limit,)
+        ).fetchall()
+    finally:
+        db.close()
+
+
 def update_stats(user_id, hp=None, damage=None, armor=None):
     db = connect()
     try:
