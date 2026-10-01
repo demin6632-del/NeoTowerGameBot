@@ -35,14 +35,14 @@ def inventory_text(items):
             total_damage += data.get("damage", 0)
             total_armor += data.get("armor", 0)
 
-    result += "\n📊 Бонусы:\n"
+    result += "\n📊 Бонусы предметов:\n"
     result += f"⚔️ Урон: +{total_damage}\n"
     result += f"🛡 Броня: +{total_armor}"
 
     return result
 
 
-def equipment_text(items):
+def equipment_text(items, equipped=""):
     weapon = "нет"
     armor = "нет"
 
@@ -50,13 +50,22 @@ def equipment_text(items):
         data = ITEMS.get(item)
         if not data:
             continue
-        if data.get("type") == "weapon":
+        if data.get("type") == "weapon" and item == equipped:
             weapon = data["name"]
-        if data.get("type") == "armor":
+        if data.get("type") == "armor" and item == equipped:
             armor = data["name"]
+
+    if equipped and weapon == "нет" and armor == "нет":
+        equipped_data = ITEMS.get(equipped)
+        if equipped_data:
+            if equipped_data.get("type") == "weapon":
+                weapon = equipped_data["name"]
+            elif equipped_data.get("type") == "armor":
+                armor = equipped_data["name"]
 
     return (
         "🛡 СНАРЯЖЕНИЕ\n\n"
         f"⚔️ Оружие: {weapon}\n"
-        f"🛡 Броня: {armor}"
+        f"🛡 Броня: {armor}\n\n"
+        "Выбери предмет для экипировки."
     )
