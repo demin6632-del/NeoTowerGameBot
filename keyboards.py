@@ -34,11 +34,19 @@ def battle_keyboard():
 
 
 def equipment_keyboard(items):
-    buttons = []
+    rows = []
     for item in items:
-        buttons.append([InlineKeyboardButton(
-            text=f"⚙️ Экипировать {item.replace('_', ' ')}",
-            callback_data=f"equip_{item}"
-        )])
-    buttons.append([InlineKeyboardButton(text="❌ Снять экипировку", callback_data="unequip")])
-    return InlineKeyboardMarkup(inline_keyboard=buttons)
+        label = {
+            "iron_sword": "⚔️ Железный меч",
+            "steel_armor": "🛡 Стальная броня"
+        }.get(item, f"⚙️ {item.replace('_', ' ')}")
+        rows.append([KeyboardButton(text=f"⚙️ {label}")])
+
+    rows.append([KeyboardButton(text="❌ Снять экипировку")])
+    rows.append([KeyboardButton(text="🔙 В главное меню")])
+
+    return ReplyKeyboardMarkup(
+        keyboard=rows,
+        resize_keyboard=True,
+        input_field_placeholder="Выбери предмет..."
+    )
