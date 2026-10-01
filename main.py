@@ -206,12 +206,48 @@ async def process_battle_action(uid, message, action):
         )
 
 
-# Оставляем callback-обработчик для старых сообщений с inline-кнопками.
 @dp.callback_query(lambda c: c.data.startswith("battle_"))
 async def battle_action_callback(callback: CallbackQuery):
     action = callback.data.replace("battle_", "", 1)
     await process_battle_action(callback.from_user.id, callback.message, action)
     await callback.answer()
+
+
+async def process_equipment_action(uid, message, text):
+    items = get_inventory(uid)
+    item_map = {
+        "⚙️ ⚔️ Железный меч": "iron_sword",
+        "⚙️ 🛡 Стальная броня": "steel_armor"
+    }
+
+    if text in item_map:
+        item = item_map[text]
+        if equip_item(uid, item):
+            equipped = get_equipment(uid)
+            await message.answer(
+                equipment_text(items, equipped),
+                reply_markup=equipment_keyboard(items)
+            )
+        else:
+            await message.answer(
+                "❌ Этого предмета пока нет в рюкзаке.",
+                reply_markup=equipment_keyboard(items)
+            )
+        return
+
+    if text == "❌ Снять экипировку":
+        unequip_item(uid)
+        await message.answer(
+            equipment_text(items, ""),
+            reply_markup=equipment_keyboard(items)
+        )
+        return
+
+    if text == "🔙 В главное меню":
+        await message.answer(
+            "🏙️ Главное меню",
+            reply_markup=main_keyboard()
+        )
 
 
 @dp.message()
@@ -232,6 +268,15 @@ async def menu(message: Message):
 
     elif message.text == "🏃 ПОБЕГ":
         await process_battle_action(message.from_user.id, message, "escape")
+
+    elif message.text.startswith("⚙️ "):
+        await process_equipment_action(message.from_user.id, message, message.text)
+
+    elif message.text == "❌ Снять экипировку":
+        await process_equipment_action(message.from_user.id, message, message.text)
+
+    elif message.text == "🔙 В главное меню":
+        await process_equipment_action(message.from_user.id, message, message.text)
 
     elif message.text == "🎒 РЮКЗАК":
         items = get_inventory(message.from_user.id)
