@@ -6,7 +6,7 @@ from http.server import HTTPServer, BaseHTTPRequestHandler
 
 from aiogram import Bot, Dispatcher
 from aiogram.filters import Command
-from aiogram.types import Message, CallbackQuery, BotCommand, FSInputFile
+from aiogram.types import Message, CallbackQuery, BotCommand
 
 from config import BOT_TOKEN
 from database import (
@@ -24,9 +24,31 @@ from error_handler import setup_error_handler
 
 active_battles = {}
 
-ASSET_DIR = Path(__file__).resolve().parent / "assets"
-UI_MOCKUP = ASSET_DIR / "neo_tower_ui.jpg"
+IMAGE_URLS = {
+    "home": "https://r2.starryai.com/results/1056204224/aa887581-c00b-48d8-8b56-f1b15fe2b24f.webp",
+    "hero": "https://pbs.twimg.com/media/HCRjaDMXUAAtISe.jpg",
+    "tower": "https://r2.starryai.com/results/1056204224/aa887581-c00b-48d8-8b56-f1b15fe2b24f.webp",
+    "shop": "https://r2.starryai.com/results/1020109006/e7698c03-8f8a-46aa-8b83-677750a84579.webp",
+    "battle": "https://static.wixstatic.com/media/2e8295_6c619453bed94c269a2f4cd6fd448a41~mv2.png/v1/fill/w_1024,h_1024,al_c/2e8295_6c619453bed94c269a2f4cd6fd448a41~mv2.png",
+    "backpack": "https://r2.starryai.com/results/1020109006/e7698c03-8f8a-46aa-8b83-677750a84579.webp",
+    "equipment": "https://img.2game.info/webp/l/skyrimspecialedition/images/mod/52462/1626474309.jpeg",
+}
 
+def image_for_text(text: str) -> str:
+    t = text.upper()
+    if "БОЙ" in t or "ВРАГ" in t or "ПОБЕДА" in t or "ПОРАЖЕНИЕ" in t:
+        return IMAGE_URLS["battle"]
+    if "ГЕРОЙ" in t or "ВЫБЕРИ ГЕРОЯ" in t:
+        return IMAGE_URLS["hero"]
+    if "БАШНЯ" in t or "ЭТАЖ" in t:
+        return IMAGE_URLS["tower"]
+    if "МАГАЗИН" in t:
+        return IMAGE_URLS["shop"]
+    if "РЮКЗАК" in t:
+        return IMAGE_URLS["backpack"]
+    if "СНАРЯЖЕНИЕ" in t or "ЭКИПИРОВ" in t:
+        return IMAGE_URLS["equipment"]
+    return IMAGE_URLS["home"]
 
 class HealthHandler(BaseHTTPRequestHandler):
     def do_GET(self):
@@ -52,15 +74,14 @@ setup_error_handler(dp)
 
 
 async def visual_answer(message: Message, text: str, reply_markup=None):
-    if UI_MOCKUP.exists():
+    try:
         await message.answer_photo(
-            FSInputFile(UI_MOCKUP),
+            image_for_text(text),
             caption=text,
             reply_markup=reply_markup
         )
-    else:
+    except Exception:
         await message.answer(text, reply_markup=reply_markup)
-
 
 @dp.message(Command("start"))
 async def start(message: Message):
