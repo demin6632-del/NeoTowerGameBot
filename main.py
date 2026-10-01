@@ -2,13 +2,16 @@ import asyncio
 import os
 from threading import Thread
 from http.server import HTTPServer, BaseHTTPRequestHandler
+
 from aiogram import Bot, Dispatcher
 from aiogram.filters import Command
 from aiogram.types import Message, CallbackQuery, BotCommand
+
 from config import BOT_TOKEN
 from database import (
     init_db, get_player, create_player, add_reward, next_floor,
-    get_inventory, get_equipment, equip_item, unequip_item
+    get_inventory, get_equipment, equip_item, unequip_item,
+    get_battle_session, save_battle_session, delete_battle_session
 )
 from keyboards import (
     heroes_keyboard, main_keyboard, battle_keyboard, equipment_keyboard
@@ -31,13 +34,13 @@ class HealthHandler(BaseHTTPRequestHandler):
         pass
 
 
-Thread(
-    target=lambda: HTTPServer(
-        ("0.0.0.0", int(os.environ.get("PORT", 10000))),
-        HealthHandler
-    ).serve_forever(),
-    daemon=True
-).start()
+def start_health_server():
+    port = int(os.environ.get("PORT", 10000))
+    server = HTTPServer(("0.0.0.0", port), HealthHandler)
+    server.serve_forever()
+
+
+Thread(target=start_health_server, daemon=True).start()
 
 bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher()
@@ -60,9 +63,9 @@ async def start(message: Message):
         )
 
 
-@dp.callback_query(lambda c: c.data.startswith("hero_"))
+@dp.callback_query(lambda c: c.data and c.data.startswith("hero_"))
 async def choose_hero(callback: CallbackQuery):
-    key = callback.data.replace("hero_", "")
+    key = callback.data.replace("hero_", "", 1)
     h = HEROES.get(key)
 
     if not h:
@@ -103,10 +106,15 @@ async def run_fight(uid, message):
         )
         return
 
-    if uid not in active_battles:
-        active_battles[uid] = start_battle(p, p["floor"])
+    state = active_battles.get(uid)
+    if state is None:
+        state = get_battle_session(uid)
 
-    state = active_battles[uid]
+    if state is None:
+        state = start_battle(p, p["floor"])
+        save_battle_session(uid, state)
+
+    active_battles[uid] = state
 
     await message.answer(
         f"⚔️ БОЙ — этаж {p['floor']}\n\n"
@@ -116,36 +124,6 @@ async def run_fight(uid, message):
         "Выбери действие внизу:",
         reply_markup=battle_keyboard()
     )
-
-
-@dp.callback_query(lambda c: c.data.startswith("equip_"))
-async def equip_action(callback: CallbackQuery):
-    uid = callback.from_user.id
-    item = callback.data.replace("equip_", "", 1)
-
-    if equip_item(uid, item):
-        items = get_inventory(uid)
-        equipped = get_equipment(uid)
-        await callback.message.answer(
-            equipment_text(items, equipped),
-            reply_markup=equipment_keyboard(items)
-        )
-        await callback.answer("Экипировано")
-    else:
-        await callback.answer("Предмет недоступен", show_alert=True)
-
-
-@dp.callback_query(lambda c: c.data == "unequip")
-async def unequip_action(callback: CallbackQuery):
-    uid = callback.from_user.id
-    unequip_item(uid)
-    items = get_inventory(uid)
-
-    await callback.message.answer(
-        equipment_text(items, ""),
-        reply_markup=equipment_keyboard(items)
-    )
-    await callback.answer("Экипировка снята")
 
 
 async def process_battle_action(uid, message, action):
@@ -158,13 +136,18 @@ async def process_battle_action(uid, message, action):
         )
         return
 
-    if uid not in active_battles:
-        active_battles[uid] = start_battle(p, p["floor"])
+    state = active_battles.get(uid)
+    if state is None:
+        state = get_battle_session(uid)
 
-    state = active_battles[uid]
+    if state is None:
+        state = start_battle(p, p["floor"])
+
+    active_battles[uid] = state
 
     if action == "escape":
         active_battles.pop(uid, None)
+        delete_battle_session(uid)
         await message.answer(
             "🏃 Побег из боя.",
             reply_markup=main_keyboard()
@@ -172,12 +155,14 @@ async def process_battle_action(uid, message, action):
         return
 
     state = battle_turn(p, state, action)
+    active_battles[uid] = state
 
     if state["enemy_hp"] <= 0:
         reward = state["enemy"].get("reward", 100)
         add_reward(uid, 100, reward, "iron_sword")
         next_floor(uid)
         active_battles.pop(uid, None)
+        delete_battle_session(uid)
 
         await message.answer(
             f"🏆 ПОБЕДА!\n\n"
@@ -189,6 +174,7 @@ async def process_battle_action(uid, message, action):
 
     elif state["player_hp"] <= 0:
         active_battles.pop(uid, None)
+        delete_battle_session(uid)
 
         await message.answer(
             "💀 ПОРАЖЕНИЕ\n\n"
@@ -197,6 +183,7 @@ async def process_battle_action(uid, message, action):
         )
 
     else:
+        save_battle_session(uid, state)
         await message.answer(
             f"⚔️ БОЙ ПРОДОЛЖАЕТСЯ\n\n"
             f"❤️ Герой: {state['player_hp']} HP\n"
@@ -206,7 +193,7 @@ async def process_battle_action(uid, message, action):
         )
 
 
-@dp.callback_query(lambda c: c.data.startswith("battle_"))
+@dp.callback_query(lambda c: c.data and c.data.startswith("battle_"))
 async def battle_action_callback(callback: CallbackQuery):
     action = callback.data.replace("battle_", "", 1)
     await process_battle_action(callback.from_user.id, callback.message, action)
@@ -248,6 +235,36 @@ async def process_equipment_action(uid, message, text):
             "🏙️ Главное меню",
             reply_markup=main_keyboard()
         )
+
+
+@dp.callback_query(lambda c: c.data and c.data.startswith("equip_"))
+async def equip_action(callback: CallbackQuery):
+    uid = callback.from_user.id
+    item = callback.data.replace("equip_", "", 1)
+
+    if equip_item(uid, item):
+        items = get_inventory(uid)
+        equipped = get_equipment(uid)
+        await callback.message.answer(
+            equipment_text(items, equipped),
+            reply_markup=equipment_keyboard(items)
+        )
+        await callback.answer("Экипировано")
+    else:
+        await callback.answer("Предмет недоступен", show_alert=True)
+
+
+@dp.callback_query(lambda c: c.data == "unequip")
+async def unequip_action(callback: CallbackQuery):
+    uid = callback.from_user.id
+    unequip_item(uid)
+    items = get_inventory(uid)
+
+    await callback.message.answer(
+        equipment_text(items, ""),
+        reply_markup=equipment_keyboard(items)
+    )
+    await callback.answer("Экипировка снята")
 
 
 @dp.message()

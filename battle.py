@@ -14,7 +14,16 @@ def get_equipment_bonus(player):
     for item in (equipment or "").split(","):
         if item == "iron_sword":
             bonus += 10
-        elif item == "steel_armor":
+
+    return bonus
+
+
+def get_equipment_armor_bonus(player):
+    equipment = player["equipment"] if "equipment" in player.keys() else ""
+    bonus = 0
+
+    for item in (equipment or "").split(","):
+        if item == "steel_armor":
             bonus += 5
 
     return bonus
@@ -39,19 +48,20 @@ def start_battle(player, floor):
 
 
 def battle_turn(player, state, action):
-    bonus = get_equipment_bonus(player)
+    attack_bonus = get_equipment_bonus(player)
+    armor_bonus = get_equipment_armor_bonus(player)
+    effective_armor = player["armor"] + armor_bonus
     log = state["log"]
 
     if action == "attack":
-        damage = player_attack(player["damage"], bonus)
+        damage = player_attack(player["damage"], attack_bonus)
         state["enemy_hp"] -= damage
         log.append(f"⚔️ Ты нанёс {damage} урона")
 
     elif action == "defend":
-        damage = max(enemy_attack(state["enemy"]["damage"], player["armor"]) // 2, 1)
+        damage = max(enemy_attack(state["enemy"]["damage"], effective_armor) // 2, 1)
         state["player_hp"] -= damage
         log.append(f"🛡 Защита! Получено {damage} урона")
-        return state
 
     elif action == "potion":
         max_hp = player["hp"]
@@ -59,10 +69,13 @@ def battle_turn(player, state, action):
         state["player_hp"] = min(max_hp, old_hp + 30)
         log.append(f"💊 Восстановлено {state['player_hp'] - old_hp} HP")
 
-    if state["enemy_hp"] > 0:
-        damage = enemy_attack(state["enemy"]["damage"], player["armor"])
+    if action != "defend" and state["enemy_hp"] > 0:
+        damage = enemy_attack(state["enemy"]["damage"], effective_armor)
         state["player_hp"] -= damage
         log.append(f"🤖 Враг нанёс {damage} урона")
+    elif action == "defend":
+        # Defend already includes the enemy's attack at half damage.
+        pass
 
     return state
 
