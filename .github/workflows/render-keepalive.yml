@@ -1,0 +1,13 @@
+name: Render keepalive
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Wake Neo Tower
+        run: curl -fsS --max-time 20 https://neotowergamebot.onrender.com/ >/dev/null
