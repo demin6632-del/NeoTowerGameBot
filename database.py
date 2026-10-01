@@ -41,6 +41,12 @@ def init_db():
         updated_at INTEGER NOT NULL
     )
     """)
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS daily_rewards(
+        user_id INTEGER PRIMARY KEY,
+        day_key TEXT NOT NULL
+    )
+    """)
     db.commit()
     db.close()
 
@@ -92,9 +98,11 @@ def add_reward(user_id, xp, credits, item=None):
             if item and item not in inventory.split(","):
                 inventory = inventory + ("," if inventory else "") + item
 
+            new_xp = player["xp"] + xp
+            new_level = max(1, 1 + new_xp // 500)
             db.execute(
-                "UPDATE players SET xp=?, credits=?, inventory=? WHERE id=?",
-                (player["xp"] + xp, player["credits"] + credits, inventory, user_id)
+                "UPDATE players SET xp=?, level=?, credits=?, inventory=? WHERE id=?",
+                (new_xp, new_level, player["credits"] + credits, inventory, user_id)
             )
     finally:
         db.close()
