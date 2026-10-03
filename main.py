@@ -21,6 +21,7 @@ from keyboards import (
 from heroes import HEROES
 from inventory import inventory_text, equipment_text, ITEMS, ITEMS
 from battle import start_battle, battle_turn
+from tower import MAX_FLOOR
 from error_handler import setup_error_handler
 
 active_battles = {}
@@ -204,8 +205,9 @@ async def auto_command(message: Message):
         steps += 1
     if state["enemy_hp"] <= 0:
         reward = state["enemy"].get("reward", 100)
-        add_reward(message.from_user.id, 100, reward, "iron_sword")
-        next_floor(message.from_user.id)
+        add_reward(message.from_user.id, 100, reward)
+        if p["floor"] < MAX_FLOOR:
+            next_floor(message.from_user.id)
         delete_battle_session(message.from_user.id)
         active_battles.pop(message.from_user.id, None)
         await visual_answer(message, f"🤖 АВТО-БОЙ\\n\\n🏆 Победа!\\n💰 +{reward} кредитов\\n⭐ +100 XP", main_keyboard())
@@ -382,7 +384,7 @@ async def next_command(message: Message):
     if state and state["enemy_hp"] > 0:
         await message.answer("🎯 Следующее действие: /attack\\nВ бою сейчас доступна атака.")
     else:
-        await message.answer("🎯 Следующее действие: /battle\\nНачни бой на текущем этаже.")
+        if p["floor"] >= MAX_FLOOR:\n            await message.answer("👑 Башня покорена. Ты достиг вершины Neo Tower.")\n        else:\n            await message.answer("🎯 Следующее действие: /battle\\nНачни бой на текущем этаже.")
 
 
 @dp.message(Command("guide"))
@@ -534,8 +536,9 @@ async def process_battle_action(uid, message, action):
 
     if state["enemy_hp"] <= 0:
         reward = state["enemy"].get("reward", 100)
-        add_reward(uid, 100, reward, "iron_sword")
-        next_floor(uid)
+        add_reward(uid, 100, reward)
+        if p["floor"] < MAX_FLOOR:
+            next_floor(uid)
         active_battles.pop(uid, None)
         delete_battle_session(uid)
 
@@ -544,7 +547,7 @@ async def process_battle_action(uid, message, action):
             f"🏆 ПОБЕДА!\n\n"
             f"💰 Награда: +{reward} кредитов\n"
             "⭐ XP: +100\n"
-            "⬆️ Следующий этаж открыт.",
+            "⬆️ Следующий этаж открыт." if p["floor"] < MAX_FLOOR else "👑 Вершина башни покорена!",
             main_keyboard()
         )
 
