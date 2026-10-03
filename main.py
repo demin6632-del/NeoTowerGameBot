@@ -384,7 +384,10 @@ async def next_command(message: Message):
     if state and state["enemy_hp"] > 0:
         await message.answer("🎯 Следующее действие: /attack\\nВ бою сейчас доступна атака.")
     else:
-        if p["floor"] >= MAX_FLOOR:\n            await message.answer("👑 Башня покорена. Ты достиг вершины Neo Tower.")\n        else:\n            await message.answer("🎯 Следующее действие: /battle\\nНачни бой на текущем этаже.")
+        if p["floor"] >= MAX_FLOOR:
+            await message.answer("👑 Башня покорена. Ты достиг вершины Neo Tower.")
+        else:
+            await message.answer("🎯 Следующее действие: /battle\\nНачни бой на текущем этаже.")
 
 
 @dp.message(Command("guide"))
