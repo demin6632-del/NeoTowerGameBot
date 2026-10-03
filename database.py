@@ -149,9 +149,10 @@ def remove_item(user_id, item):
             if item not in items:
                 return False
             items.remove(item)
-            equipment = player["equipment"] or ""
-            if equipment == item:
-                equipment = ""
+            equipment_items = [x for x in (player["equipment"] or "").split(",") if x]
+            if item in equipment_items:
+                equipment_items.remove(item)
+            equipment = ",".join(equipment_items)
             db.execute(
                 "UPDATE players SET inventory=?, equipment=? WHERE id=?",
                 (",".join(items), equipment, user_id)
@@ -234,9 +235,16 @@ def equip_item(user_id, item):
             if item not in inventory:
                 return False
 
+            equipment_items = [x for x in (player["equipment"] or "").split(",") if x]
+            if item not in equipment_items:
+                if item == "iron_sword":
+                    equipment_items = [x for x in equipment_items if x != "iron_sword"]
+                elif item == "steel_armor":
+                    equipment_items = [x for x in equipment_items if x != "steel_armor"]
+                equipment_items.append(item)
             db.execute(
                 "UPDATE players SET equipment=? WHERE id=?",
-                (item, user_id)
+                (",".join(equipment_items), user_id)
             )
             return True
     finally:
