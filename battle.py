@@ -24,7 +24,7 @@ def get_equipment_armor_bonus(player):
 
     for item in (equipment or "").split(","):
         if item == "steel_armor":
-            bonus += 5
+            bonus += 10
 
     return bonus
 
