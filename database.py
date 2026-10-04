@@ -95,8 +95,11 @@ def add_reward(user_id, xp, credits, item=None):
                 return
 
             inventory = player["inventory"] or ""
-            if item and item not in inventory.split(","):
-                inventory = inventory + ("," if inventory else "") + item
+            if item:
+                items = [x for x in inventory.split(",") if x]
+                if item not in items or item == "health_potion":
+                    items.append(item)
+                    inventory = ",".join(items)
 
             new_xp = player["xp"] + xp
             new_level = max(1, 1 + new_xp // 500)
@@ -129,7 +132,7 @@ def add_item(user_id, item):
             if not player:
                 return False
             items = [x for x in (player["inventory"] or "").split(",") if x]
-            if item in items:
+            if item in items and item != "health_potion":
                 return False
             items.append(item)
             db.execute("UPDATE players SET inventory=? WHERE id=?", (",".join(items), user_id))
