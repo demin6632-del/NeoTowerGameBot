@@ -212,9 +212,14 @@ async def auto_command(message: Message):
         active_battles.pop(message.from_user.id, None)
         await visual_answer(message, f"🤖 АВТО-БОЙ\\n\\n🏆 Победа!\\n💰 +{reward} кредитов\\n⭐ +100 XP", main_keyboard())
     else:
-        save_battle_session(message.from_user.id, state)
-        active_battles[message.from_user.id] = state
-        await visual_answer(message, f"🤖 АВТО-БОЙ\\n\\n💀 Бой завершён поражением.\\n❤️ Осталось: {state['player_hp']} HP", main_keyboard())
+        if state["player_hp"] <= 0:
+            delete_battle_session(message.from_user.id)
+            active_battles.pop(message.from_user.id, None)
+            await visual_answer(message, "🤖 АВТО-БОЙ\\n\\n💀 Поражение.\\n❤️ Герой восстановится перед следующим боем.", main_keyboard())
+        else:
+            save_battle_session(message.from_user.id, state)
+            active_battles[message.from_user.id] = state
+            await visual_answer(message, f"🤖 АВТО-БОЙ\\n\\n⏸ Бой не завершён.\\n❤️ Осталось: {state['player_hp']} HP\\n🤖 Враг: {state['enemy_hp']} HP", battle_keyboard())
 
 
 @dp.message(Command("backpack"))
@@ -260,7 +265,7 @@ async def items_command(message: Message):
 
 @dp.message(Command("shop"))
 async def shop_command(message: Message):
-    await visual_answer(message, "🛒 МАГАЗИН\\n\\n🛡 steel_armor — 500 кредитов\\n\\nКупить: /buy steel_armor", main_keyboard())
+    await visual_answer(message, "🛒 МАГАЗИН\\n\\n🛡 steel_armor — 500 кредитов\\n💊 health_potion — 100 кредитов\\n\\nКупить: /buy steel_armor или /buy health_potion", main_keyboard())
 
 
 @dp.message(Command("buy"))
@@ -289,7 +294,7 @@ async def buy_command(message: Message):
 async def sell_command(message: Message):
     p = require_player(message)
     item = command_arg(message).replace("-", "_").replace(" ", "_")
-    item = {"броня":"steel_armor","стальная_броня":"steel_armor"}.get(item, item)
+    item = {"броня":"steel_armor","стальная_броня":"steel_armor","зелье":"health_potion","зелье_здоровья":"health_potion"}.get(item, item)
     prices = {"steel_armor": 250, "health_potion": 50}
     if not p:
         await message.answer("Сначала выбери героя через /start", reply_markup=heroes_keyboard())
