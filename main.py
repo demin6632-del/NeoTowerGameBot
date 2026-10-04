@@ -13,7 +13,8 @@ from database import (
     init_db, get_player, create_player, add_reward, next_floor,
     get_inventory, get_equipment, equip_item, unequip_item,
     get_battle_session, save_battle_session, delete_battle_session,
-    add_item, remove_item, spend_credits, get_daily_claim, set_daily_claim, top_players
+    add_item, remove_item, spend_credits, get_daily_claim, set_daily_claim, top_players,
+    claim_action, claim_reward
 )
 from keyboards import (
     heroes_keyboard, main_keyboard, battle_keyboard, equipment_keyboard
@@ -25,6 +26,7 @@ from tower import MAX_FLOOR
 from error_handler import setup_error_handler
 
 active_battles = {}
+battle_locks = {}
 
 IMAGE_URLS = {
     "home": "https://r2.starryai.com/results/1056204224/aa887581-c00b-48d8-8b56-f1b15fe2b24f.webp",
@@ -517,7 +519,7 @@ async def run_fight(uid, message):
     )
 
 
-async def process_battle_action(uid, message, action):
+async def _process_battle_action(uid, message, action):
     p = get_player(uid)
 
     if not p:
@@ -593,6 +595,26 @@ async def process_battle_action(uid, message, action):
             "Выбери действие внизу:",
             battle_keyboard()
         )
+
+
+async def process_battle_action(uid, message, action):
+    lock = battle_locks.setdefault(uid, asyncio.Lock())
+    if lock.locked():
+        await message.answer("⏳ Предыдущее действие ещё обрабатывается.")
+        return
+
+    chat = getattr(message, "chat", None)
+    chat_id = chat.id if chat else uid
+    action_id = f"{chat_id}:{getattr(message, 'message_id', 0)}:{action}"
+    if not claim_action(uid, action_id):
+        return
+
+    async with lock:
+        try:
+            await _process_battle_action(uid, message, action)
+        finally:
+            if not lock.locked():
+                battle_locks.pop(uid, None)
 
 
 @dp.callback_query(lambda c: c.data and c.data.startswith("battle_"))
