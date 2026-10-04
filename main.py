@@ -19,7 +19,7 @@ from keyboards import (
     heroes_keyboard, main_keyboard, battle_keyboard, equipment_keyboard
 )
 from heroes import HEROES
-from inventory import inventory_text, equipment_text, ITEMS, ITEMS
+from inventory import inventory_text, equipment_text, ITEMS
 from battle import start_battle, battle_turn
 from tower import MAX_FLOOR
 from error_handler import setup_error_handler
@@ -200,7 +200,7 @@ async def auto_command(message: Message):
         return
     state = active_battles.get(message.from_user.id) or get_battle_session(message.from_user.id) or start_battle(p, p["floor"])
     steps = 0
-    while state["player_hp"] > 0 and state["enemy_hp"] > 0 and steps < 30:
+    while state["player_hp"] > 0 and state["enemy_hp"] > 0 and steps < 500:
         state = battle_turn(p, state, "attack")
         steps += 1
     if state["enemy_hp"] <= 0:
@@ -267,13 +267,13 @@ async def shop_command(message: Message):
 async def buy_command(message: Message):
     p = require_player(message)
     item = command_arg(message).replace("-", "_").replace(" ", "_")
-    item = {"броня":"steel_armor","стальная_броня":"steel_armor"}.get(item, item)
-    prices = {"steel_armor": 500}
+    item = {"броня":"steel_armor","стальная_броня":"steel_armor","зелье":"health_potion","зелье_здоровья":"health_potion"}.get(item, item)
+    prices = {"steel_armor": 500, "health_potion": 100}
     if not p:
         await message.answer("Сначала выбери героя через /start", reply_markup=heroes_keyboard())
         return
     if item not in prices:
-        await message.answer("❌ Сейчас доступна покупка: steel_armor (500).")
+        await message.answer("❌ Сейчас доступна покупка: steel_armor (500) или health_potion (100).")
         return
     if item in get_inventory(message.from_user.id):
         await message.answer("ℹ️ Этот предмет уже есть в рюкзаке.")
@@ -290,12 +290,12 @@ async def sell_command(message: Message):
     p = require_player(message)
     item = command_arg(message).replace("-", "_").replace(" ", "_")
     item = {"броня":"steel_armor","стальная_броня":"steel_armor"}.get(item, item)
-    prices = {"steel_armor": 250}
+    prices = {"steel_armor": 250, "health_potion": 50}
     if not p:
         await message.answer("Сначала выбери героя через /start", reply_markup=heroes_keyboard())
         return
     if item not in prices:
-        await message.answer("❌ Сейчас можно продать: steel_armor (250).")
+        await message.answer("❌ Сейчас можно продать: steel_armor (250) или health_potion (50).")
         return
     if remove_item(message.from_user.id, item):
         add_reward(message.from_user.id, 0, prices[item])
@@ -527,6 +527,15 @@ async def process_battle_action(uid, message, action):
         state = start_battle(p, p["floor"])
 
     active_battles[uid] = state
+
+    if action == "potion":
+        if "health_potion" not in get_inventory(uid):
+            await message.answer("❌ Зелий здоровья нет в рюкзаке. Купи его в /shop.")
+            return
+        if state["player_hp"] >= p["hp"]:
+            await message.answer("❤️ HP уже полностью восстановлено.")
+            return
+        remove_item(uid, "health_potion")
 
     if action == "escape":
         active_battles.pop(uid, None)
