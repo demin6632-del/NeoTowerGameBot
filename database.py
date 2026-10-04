@@ -1,8 +1,10 @@
 import json
 import sqlite3
 import time
+import os
 
-DATABASE = "neotower.db"
+DATABASE = os.environ.get("DATABASE_PATH", "neotower.db")
+SCHEMA_VERSION = 2
 
 
 def connect():
@@ -39,6 +41,28 @@ def init_db():
         user_id INTEGER PRIMARY KEY,
         state TEXT NOT NULL,
         updated_at INTEGER NOT NULL
+    )
+    """)
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS schema_meta(
+        key TEXT PRIMARY KEY,
+        value TEXT NOT NULL
+    )
+    """)
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS action_log(
+        user_id INTEGER NOT NULL,
+        action_id TEXT NOT NULL,
+        created_at INTEGER NOT NULL,
+        PRIMARY KEY(user_id, action_id)
+    )
+    """)
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS reward_claims(
+        user_id INTEGER NOT NULL,
+        reward_id TEXT NOT NULL,
+        created_at INTEGER NOT NULL,
+        PRIMARY KEY(user_id, reward_id)
     )
     """)
     cursor.execute("""
@@ -332,5 +356,17 @@ def delete_battle_session(user_id):
                 "DELETE FROM battle_sessions WHERE user_id=?",
                 (user_id,)
             )
+    finally:
+        db.close()
+
+
+def prune_operation_logs(max_age_seconds=604800):
+    """Remove old idempotency records; safe to run periodically."""
+    cutoff = int(time.time()) - max_age_seconds
+    db = connect()
+    try:
+        with db:
+            db.execute("DELETE FROM action_log WHERE created_at < ?", (cutoff,))
+            db.execute("DELETE FROM reward_claims WHERE created_at < ?", (cutoff,))
     finally:
         db.close()
