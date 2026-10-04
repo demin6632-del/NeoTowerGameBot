@@ -10,7 +10,7 @@ from aiogram.types import Message, CallbackQuery, BotCommand
 
 from config import BOT_TOKEN
 from database import (
-    init_db, get_player, create_player, add_reward, next_floor,
+    init_db, cleanup_stale_battles, get_player, create_player, add_reward, next_floor,
     get_inventory, get_equipment, equip_item, unequip_item,
     get_battle_session, save_battle_session, delete_battle_session,
     add_item, remove_item, spend_credits, get_daily_claim, set_daily_claim, top_players,
@@ -794,6 +794,7 @@ async def menu(message: Message):
 
 async def main():
     init_db()
+cleanup_stale_battles()
     await bot.set_my_commands([
         BotCommand(command="start", description="🎮 Запуск"),
         BotCommand(command="help", description="📚 Все команды"),
