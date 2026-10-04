@@ -383,3 +383,32 @@ def prune_operation_logs(max_age_seconds=604800):
             db.execute("DELETE FROM reward_claims WHERE created_at < ?", (cutoff,))
     finally:
         db.close()
+
+
+def buy_item_atomic(user_id, item, price, stackable=False):
+    """Purchase an item with balance check and inventory update in one transaction."""
+    if not item or price < 0:
+        return False
+
+    db = connect()
+    try:
+        with db:
+            player = db.execute(
+                "SELECT credits, inventory FROM players WHERE id=?",
+                (user_id,),
+            ).fetchone()
+            if not player or player["credits"] < price:
+                return False
+
+            items = [x for x in (player["inventory"] or "").split(",") if x]
+            if not stackable and item in items:
+                return False
+
+            items.append(item)
+            db.execute(
+                "UPDATE players SET credits=credits-?, inventory=? WHERE id=?",
+                (price, ",".join(items), user_id),
+            )
+            return True
+    finally:
+        db.close()
