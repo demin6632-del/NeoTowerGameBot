@@ -1,6 +1,7 @@
 ITEMS = {
     "iron_sword": {"name": "⚔️ Железный меч", "type": "weapon", "damage": 10},
-    "steel_armor": {"name": "🛡 Стальная броня", "type": "armor", "armor": 10}
+    "steel_armor": {"name": "🛡 Стальная броня", "type": "armor", "armor": 10},
+    "health_potion": {"name": "💊 Зелье здоровья", "type": "consumable", "heal": 30}
 }
 
 def starter_inventory():
