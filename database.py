@@ -312,6 +312,16 @@ def next_floor(user_id):
         db.close()
 
 
+def cleanup_stale_battles(max_age_seconds=86400):
+    cutoff = int(time.time()) - max_age_seconds
+    db = connect()
+    try:
+        with db:
+            db.execute("DELETE FROM battle_sessions WHERE updated_at < ?", (cutoff,))
+    finally:
+        db.close()
+
+
 def get_battle_session(user_id):
     db = connect()
     try:
@@ -332,6 +342,8 @@ def get_battle_session(user_id):
 
 
 def save_battle_session(user_id, state):
+    if not isinstance(state, dict) or "enemy" not in state or "enemy_hp" not in state or "player_hp" not in state:
+        return False
     payload = json.dumps(state, ensure_ascii=False, separators=(",", ":"))
     db = connect()
     try:
@@ -344,6 +356,7 @@ def save_battle_session(user_id, state):
                    updated_at=excluded.updated_at""",
                 (user_id, payload, int(time.time()))
             )
+            return True
     finally:
         db.close()
 
