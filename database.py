@@ -1,8 +1,10 @@
 import json
 import sqlite3
 import time
+import os
 
-DATABASE = "neotower.db"
+DATABASE = os.environ.get("DATABASE_PATH", "neotower.db")
+SCHEMA_VERSION = 2
 
 
 def connect():
@@ -39,6 +41,28 @@ def init_db():
         user_id INTEGER PRIMARY KEY,
         state TEXT NOT NULL,
         updated_at INTEGER NOT NULL
+    )
+    """)
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS schema_meta(
+        key TEXT PRIMARY KEY,
+        value TEXT NOT NULL
+    )
+    """)
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS action_log(
+        user_id INTEGER NOT NULL,
+        action_id TEXT NOT NULL,
+        created_at INTEGER NOT NULL,
+        PRIMARY KEY(user_id, action_id)
+    )
+    """)
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS reward_claims(
+        user_id INTEGER NOT NULL,
+        reward_id TEXT NOT NULL,
+        created_at INTEGER NOT NULL,
+        PRIMARY KEY(user_id, reward_id)
     )
     """)
     cursor.execute("""
@@ -288,6 +312,16 @@ def next_floor(user_id):
         db.close()
 
 
+def cleanup_stale_battles(max_age_seconds=86400):
+    cutoff = int(time.time()) - max_age_seconds
+    db = connect()
+    try:
+        with db:
+            db.execute("DELETE FROM battle_sessions WHERE updated_at < ?", (cutoff,))
+    finally:
+        db.close()
+
+
 def get_battle_session(user_id):
     db = connect()
     try:
@@ -308,6 +342,8 @@ def get_battle_session(user_id):
 
 
 def save_battle_session(user_id, state):
+    if not isinstance(state, dict) or "enemy" not in state or "enemy_hp" not in state or "player_hp" not in state:
+        return False
     payload = json.dumps(state, ensure_ascii=False, separators=(",", ":"))
     db = connect()
     try:
@@ -320,6 +356,7 @@ def save_battle_session(user_id, state):
                    updated_at=excluded.updated_at""",
                 (user_id, payload, int(time.time()))
             )
+            return True
     finally:
         db.close()
 
@@ -332,5 +369,46 @@ def delete_battle_session(user_id):
                 "DELETE FROM battle_sessions WHERE user_id=?",
                 (user_id,)
             )
+    finally:
+        db.close()
+
+
+def prune_operation_logs(max_age_seconds=604800):
+    """Remove old idempotency records; safe to run periodically."""
+    cutoff = int(time.time()) - max_age_seconds
+    db = connect()
+    try:
+        with db:
+            db.execute("DELETE FROM action_log WHERE created_at < ?", (cutoff,))
+            db.execute("DELETE FROM reward_claims WHERE created_at < ?", (cutoff,))
+    finally:
+        db.close()
+
+
+def buy_item_atomic(user_id, item, price, stackable=False):
+    """Purchase an item with balance check and inventory update in one transaction."""
+    if not item or price < 0:
+        return False
+
+    db = connect()
+    try:
+        with db:
+            player = db.execute(
+                "SELECT credits, inventory FROM players WHERE id=?",
+                (user_id,),
+            ).fetchone()
+            if not player or player["credits"] < price:
+                return False
+
+            items = [x for x in (player["inventory"] or "").split(",") if x]
+            if not stackable and item in items:
+                return False
+
+            items.append(item)
+            db.execute(
+                "UPDATE players SET credits=credits-?, inventory=? WHERE id=?",
+                (price, ",".join(items), user_id),
+            )
+            return True
     finally:
         db.close()
