@@ -13,7 +13,7 @@ from database import (
     init_db, cleanup_stale_battles, get_player, create_player, add_reward, next_floor,
     get_inventory, get_equipment, equip_item, unequip_item,
     get_battle_session, save_battle_session, delete_battle_session,
-    add_item, remove_item, spend_credits, get_daily_claim, set_daily_claim, top_players,
+    add_item, remove_item, spend_credits, buy_item_atomic, get_daily_claim, set_daily_claim, top_players,
     claim_action, claim_reward
 )
 from keyboards import (
@@ -289,11 +289,20 @@ async def buy_command(message: Message):
     if item != "health_potion" and item in get_inventory(message.from_user.id):
         await message.answer("ℹ️ Этот предмет уже есть в рюкзаке.")
         return
-    if not spend_credits(message.from_user.id, prices[item]):
-        await message.answer(f"💰 Недостаточно кредитов. Нужно {prices[item]}.")
+    if not buy_item_atomic(
+        message.from_user.id,
+        item,
+        prices[item],
+        stackable=(item == "health_potion"),
+    ):
+        await message.answer(
+            f"💰 Недостаточно кредитов или предмет уже есть. Нужно {prices[item]}."
+        )
         return
-    add_item(message.from_user.id, item)
-    await message.answer(f"🛒 Куплено: {ITEMS[item]['name']} за {prices[item]} кредитов.", reply_markup=main_keyboard())
+    await message.answer(
+        f"🛒 Куплено: {ITEMS[item]['name']} за {prices[item]} кредитов.",
+        reply_markup=main_keyboard()
+    )
 
 
 @dp.message(Command("sell"))
