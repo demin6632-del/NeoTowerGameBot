@@ -13,12 +13,19 @@ def get_item(item_id):
 def inventory_text(items):
     if not items:
         return "🎒 Рюкзак пуст\n\nНайди предметы в башне или купи их в магазине."
-    result = "🎒 РЮКЗАК\n\n"
+
+    counts = {}
     for item in items:
-        data = ITEMS.get(item)
-        if data:
-            result += f"• {data['name']}\n"
-    result += "\n📦 Всего предметов: " + str(len([x for x in items if x in ITEMS]))
+        if item in ITEMS:
+            counts[item] = counts.get(item, 0) + 1
+
+    result = "🎒 РЮКЗАК\n\n"
+    for item, count in counts.items():
+        data = ITEMS[item]
+        suffix = f" ×{count}" if count > 1 else ""
+        result += f"• {data['name']}{suffix}\n"
+
+    result += "\n📦 Всего предметов: " + str(sum(counts.values()))
     return result
 
 def equipment_text(items, equipped=""):
