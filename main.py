@@ -210,7 +210,11 @@ async def auto_command(message: Message):
             next_floor(message.from_user.id)
         delete_battle_session(message.from_user.id)
         active_battles.pop(message.from_user.id, None)
-        await visual_answer(message, f"🤖 АВТО-БОЙ\\n\\n🏆 Победа!\\n💰 +{reward} кредитов\\n⭐ +100 XP", main_keyboard())
+        result_text = (
+            f"🤖 АВТО-БОЙ\\n\\n🏆 Победа!\\n💰 +{reward} кредитов\\n⭐ +100 XP\\n"
+            + ("👑 Вершина башни покорена!" if p["floor"] >= MAX_FLOOR else "⬆️ Следующий этаж открыт.")
+        )
+        await visual_answer(message, result_text, main_keyboard())
     else:
         if state["player_hp"] <= 0:
             delete_battle_session(message.from_user.id)
@@ -280,7 +284,7 @@ async def buy_command(message: Message):
     if item not in prices:
         await message.answer("❌ Сейчас доступна покупка: steel_armor (500) или health_potion (100).")
         return
-    if item in get_inventory(message.from_user.id):
+    if item != "health_potion" and item in get_inventory(message.from_user.id):
         await message.answer("ℹ️ Этот предмет уже есть в рюкзаке.")
         return
     if not spend_credits(message.from_user.id, prices[item]):
