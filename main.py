@@ -376,7 +376,8 @@ async def auto_command(message: Message):
         enemy_name = state["enemy"]["name"]
         defeated_floor = p["floor"]
         reward = state["enemy"].get("reward", 100)
-        add_reward(message.from_user.id, 100, reward)
+        xp_reward = 100 + defeated_floor * 25
+        add_reward(message.from_user.id, xp_reward, reward)
         if p["floor"] < MAX_FLOOR:
             next_floor(message.from_user.id)
         else:
@@ -385,7 +386,7 @@ async def auto_command(message: Message):
         active_battles.pop(message.from_user.id, None)
         result_text = (
             f"🤖 АВТО-БОЙ\n\n🏆 Победа!\n🤖 Побеждён враг: {enemy_name}\n🏰 Этаж: {defeated_floor}\n"
-            f"💰 +{reward} кредитов\n⭐ +100 XP\n"
+            f"💰 +{reward} кредитов\n⭐ +{xp_reward} XP\n"
             + ("👑 Вершина башни покорена!" if defeated_floor >= MAX_FLOOR else "⬆️ Следующий этаж открыт.")
         )
         await visual_answer(message, result_text, main_keyboard())
@@ -742,18 +743,19 @@ async def process_battle_action(uid, message, action):
         enemy_name = state["enemy"]["name"]
         defeated_floor = p["floor"]
         reward = state["enemy"].get("reward", 100)
-        add_reward(uid, 100, reward)
+        xp_reward = 100 + defeated_floor * 25
+        add_reward(uid, xp_reward, reward)
         if p["floor"] < MAX_FLOOR:
             next_floor(uid)
             result_text = (
                 f"🏆 ПОБЕДА!\n\n🤖 Побеждён враг: {enemy_name}\n🏰 Этаж: {defeated_floor}\n"
-                f"💰 Награда: +{reward} кредитов\n⭐ XP: +100\n⬆️ Следующий этаж открыт."
+                f"💰 Награда: +{reward} кредитов\n⭐ XP: +{xp_reward}\n⬆️ Следующий этаж открыт."
             )
         else:
             complete_tower(uid)
             result_text = (
                 f"👑 ВЕРШИНА ПОКОРЕНА!\n\n🤖 Побеждён враг: {enemy_name}\n🏰 Этаж: {defeated_floor}\n"
-                f"💰 Награда: +{reward} кредитов\n⭐ XP: +100\n🏰 Ты прошёл все 10 этажей Neo Tower!"
+                f"💰 Награда: +{reward} кредитов\n⭐ XP: +{xp_reward}\n🏰 Ты прошёл все 10 этажей Neo Tower!"
             )
         active_battles.pop(uid, None)
         delete_battle_session(uid)
