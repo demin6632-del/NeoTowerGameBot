@@ -606,15 +606,17 @@ async def choose_hero(callback: CallbackQuery):
     )
 
     if not created:
-        await callback.message.answer(
+        await visual_answer(
+            callback.message,
             "🧙 Герой уже выбран. Можно сразу идти в бой.",
-            reply_markup=main_keyboard()
+            main_keyboard()
         )
     else:
-        await callback.message.answer(
+        await visual_answer(
+            callback.message,
             f"🧙 {h['name']} выбран!\n\n"
             "⚔️ Железный меч уже экипирован.",
-            reply_markup=main_keyboard()
+            main_keyboard()
         )
 
     await callback.answer()
