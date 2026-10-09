@@ -1,5 +1,6 @@
 import asyncio
 import hashlib
+import logging
 import os
 from pathlib import Path
 
@@ -75,12 +76,37 @@ def image_for_text(text: str) -> str:
         return IMAGE_URLS["equipment"]
     return IMAGE_URLS["home"]
 
+logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
+logger = logging.getLogger("neotower.webhook")
+
 WEBHOOK_SECRET = hashlib.sha256(BOT_TOKEN.encode("utf-8")).hexdigest()
 WEBHOOK_PATH = "/telegram/" + WEBHOOK_SECRET[:32]
 
 
 async def health_handler(request: web.Request):
     return web.Response(text="NeoTowerGameBot is alive", content_type="text/plain")
+
+
+async def diagnostics_handler(request: web.Request):
+    """Safe operational diagnostics; never expose the token or webhook path."""
+    try:
+        info = await bot.get_webhook_info()
+        expected_base = os.environ.get("RENDER_EXTERNAL_URL", "").rstrip("/")
+        configured = bool(expected_base and info.url == expected_base + WEBHOOK_PATH)
+        return web.json_response({
+            "service": "NeoTowerGameBot",
+            "status": "ok" if configured else "webhook_mismatch",
+            "webhook_configured": bool(info.url),
+            "webhook_matches_render_url": configured,
+            "pending_update_count": info.pending_update_count,
+            "last_error_date": info.last_error_date.isoformat() if info.last_error_date else None,
+            "last_error_message": info.last_error_message,
+            "max_connections": info.max_connections,
+            "allowed_updates": info.allowed_updates,
+        })
+    except Exception:
+        logger.exception("Diagnostics could not query Telegram webhook status")
+        return web.json_response({"service": "NeoTowerGameBot", "status": "telegram_api_error"}, status=503)
 
 
 async def telegram_webhook(request: web.Request):
@@ -91,8 +117,7 @@ async def telegram_webhook(request: web.Request):
         update = Update.model_validate(payload, context={"bot": bot})
         await dp.feed_update(bot, update)
     except Exception:
-        import logging
-        logging.exception("Telegram webhook update failed")
+        logger.exception("Telegram webhook update failed")
         return web.Response(status=500, text="Update processing failed")
     return web.Response(text="OK")
 
@@ -146,11 +171,17 @@ async def on_startup(app: web.Application):
     base_url = os.environ.get("RENDER_EXTERNAL_URL", "").rstrip("/")
     if not base_url:
         raise RuntimeError("RENDER_EXTERNAL_URL is missing; webhook mode requires the public Render URL")
+    allowed_updates = dp.resolve_used_update_types()
     await bot.set_webhook(
         url=base_url + WEBHOOK_PATH,
         secret_token=WEBHOOK_SECRET,
         drop_pending_updates=False,
-        allowed_updates=dp.resolve_used_update_types(),
+        allowed_updates=allowed_updates,
+    )
+    info = await bot.get_webhook_info()
+    logger.info(
+        "Webhook initialized: configured=%s pending=%s last_error=%s allowed_updates=%s",
+        bool(info.url), info.pending_update_count, info.last_error_message, allowed_updates
     )
 
 
@@ -164,6 +195,7 @@ def create_app() -> web.Application:
     app = web.Application()
     app.router.add_get("/", health_handler)
     app.router.add_get("/health", health_handler)
+    app.router.add_get("/diagnostics", diagnostics_handler)
     app.router.add_post(WEBHOOK_PATH, telegram_webhook)
     app.on_startup.append(on_startup)
     app.on_cleanup.append(on_cleanup)
