@@ -88,6 +88,51 @@ class GameplayTests(unittest.TestCase):
             self.assertGreater(TOWER[floor]["hp"], TOWER[floor - 1]["hp"])
         self.assertTrue(all(row["damage"] > 0 and row["reward"] > 0 for row in TOWER.values()))
 
+    def test_all_heroes_can_clear_tower_with_equipment_and_supplies(self):
+        import random
+        from tower import MAX_FLOOR, TOWER
+
+        for index, (hero_key, hero) in enumerate(HEROES.items(), start=1):
+            user_id = 20000 + index
+            database.create_player(
+                user_id, f"Tester{index}", hero_key,
+                hero["hp"], hero["damage"], hero["armor"]
+            )
+            database.add_reward(user_id, 0, 5000)
+            self.assertTrue(database.add_item(user_id, "steel_armor"))
+            self.assertTrue(database.equip_item(user_id, "steel_armor"))
+            for _ in range(30):
+                self.assertTrue(database.add_item(user_id, "health_potion"))
+
+            random.seed(100 + index)
+            for floor in range(1, MAX_FLOOR + 1):
+                player = database.get_player(user_id)
+                state = start_battle(player, floor)
+                potions_left = len([item for item in database.get_inventory(user_id) if item == "health_potion"])
+                turns = 0
+                while state["player_hp"] > 0 and state["enemy_hp"] > 0 and turns < 250:
+                    if state["player_hp"] <= int(player["hp"] * 0.45) and potions_left:
+                        self.assertTrue(database.remove_item(user_id, "health_potion"))
+                        potions_left -= 1
+                        action = "potion"
+                    else:
+                        action = "attack"
+                    state = battle_turn(player, state, action)
+                    turns += 1
+
+                self.assertGreater(
+                    state["player_hp"], 0,
+                    f"{hero_key} could not survive floor {floor} with armor and 30 potions"
+                )
+                self.assertEqual(state["enemy_hp"], 0, f"{hero_key} did not clear floor {floor}")
+                database.add_reward(user_id, 100, TOWER[floor]["reward"])
+                if floor < MAX_FLOOR:
+                    database.next_floor(user_id)
+                else:
+                    database.complete_tower(user_id)
+
+            self.assertEqual(database.get_player(user_id)["tower_cleared"], 1)
+
 
 if __name__ == "__main__":
     unittest.main()
