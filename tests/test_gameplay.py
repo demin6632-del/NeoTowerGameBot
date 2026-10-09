@@ -46,6 +46,48 @@ class GameplayTests(unittest.TestCase):
         database.complete_tower(12345)
         self.assertEqual(database.get_player(12345)["tower_cleared"], 1)
 
+    def test_level_up_increases_combat_stats(self):
+        database.add_reward(12345, 500, 100)
+        player = database.get_player(12345)
+        self.assertEqual(player["level"], 2)
+        self.assertEqual(player["xp"], 500)
+        self.assertEqual(player["credits"], 100)
+        self.assertEqual(player["hp"], HEROES["cyborg"]["hp"] + 20)
+        self.assertEqual(player["damage"], HEROES["cyborg"]["damage"] + 5)
+        self.assertEqual(player["armor"], HEROES["cyborg"]["armor"] + 3)
+
+    def test_consumable_cannot_be_equipped(self):
+        self.assertTrue(database.add_item(12345, "health_potion"))
+        self.assertFalse(database.equip_item(12345, "health_potion"))
+
+    def test_equipment_changes_combat_bonuses(self):
+        from battle import get_equipment_bonus, get_equipment_armor_bonus
+        self.assertTrue(database.equip_item(12345, "iron_sword"))
+        self.assertTrue(database.add_item(12345, "steel_armor"))
+        self.assertTrue(database.equip_item(12345, "steel_armor"))
+        player = database.get_player(12345)
+        self.assertEqual(get_equipment_bonus(player), 10)
+        self.assertEqual(get_equipment_armor_bonus(player), 10)
+
+    def test_battle_session_survives_database_reload(self):
+        from tower import TOWER
+        state = {
+            "enemy": {**TOWER[1], "name": TOWER[1]["enemy"], "floor_name": TOWER[1]["name"]},
+            "player_hp": 150,
+            "enemy_hp": 60,
+            "log": ["test"],
+        }
+        database.save_battle_session(12345, state)
+        self.assertEqual(database.get_battle_session(12345), state)
+
+    def test_tower_encounters_are_ordered_and_increasing(self):
+        from tower import MAX_FLOOR, TOWER
+        self.assertEqual(MAX_FLOOR, 10)
+        self.assertEqual(sorted(TOWER), list(range(1, 11)))
+        for floor in range(2, MAX_FLOOR + 1):
+            self.assertGreater(TOWER[floor]["hp"], TOWER[floor - 1]["hp"])
+        self.assertTrue(all(row["damage"] > 0 and row["reward"] > 0 for row in TOWER.values()))
+
 
 if __name__ == "__main__":
     unittest.main()
