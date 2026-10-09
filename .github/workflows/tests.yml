@@ -1,8 +1,6 @@
 name: Test game bot
 
 on:
-  push:
-    branches: ["main", "fix/playable-game-2026-10-09"]
   pull_request:
   workflow_dispatch:
 
