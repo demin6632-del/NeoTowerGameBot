@@ -828,6 +828,11 @@ async def equip_action(callback: CallbackQuery):
     uid = callback.from_user.id
     item = callback.data.replace("equip_", "", 1)
 
+    if item == "menu":
+        await callback.message.answer("🏙️ Главное меню", reply_markup=main_keyboard())
+        await callback.answer()
+        return
+
     if equip_item(uid, item):
         items = get_inventory(uid)
         equipped = get_equipment(uid)
