@@ -58,9 +58,9 @@ def image_for_text(text: str) -> str:
     t = text.upper()
     if "БОЙ" in t or "ВРАГ" in t or "ПОБЕДА" in t or "ПОРАЖЕНИЕ" in t:
         # Prefer the exact floor when it is present in the battle text.
-        match = re.search(r"ЭТАЖ\\s*(\\d+)", t)
+        match = re.search(r"ЭТАЖ\s*(\d+)", t)
         if not match:
-            match = re.search(r"ЭТАЖА\\s*(\\d+)", t)
+            match = re.search(r"ЭТАЖА\s*(\d+)", t)
         floor = int(match.group(1)) if match else 1
         return ENEMY_PHOTO_BY_FLOOR.get(floor, IMAGE_URLS["battle"])
     if "ГЕРОЙ" in t or "ВЫБЕРИ ГЕРОЯ" in t:
@@ -328,7 +328,7 @@ async def auto_command(message: Message):
         else:
             save_battle_session(message.from_user.id, state)
             active_battles[message.from_user.id] = state
-            await visual_answer(message, f"🤖 АВТО-БОЙ\n\n⏸ Бой не завершён.\n❤️ Осталось: {state['player_hp']} HP\n🤖 Враг: {state['enemy_hp']} HP", battle_keyboard())
+            await visual_answer(message, f"🤖 АВТО-БОЙ — этаж {p['floor']}\n\n⏸ Бой не завершён.\n❤️ Осталось: {state['player_hp']} HP\n🤖 {state['enemy']['name']}: {state['enemy_hp']} HP", battle_keyboard())
 
 
 @dp.message(Command("backpack"))
