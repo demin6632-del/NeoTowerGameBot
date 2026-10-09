@@ -699,6 +699,11 @@ async def run_fight(uid, message):
 
 
 async def process_battle_action(uid, message, action):
+    # Reject stale or malformed callback actions without consuming a turn.
+    if action not in {"attack", "defend", "potion", "escape"}:
+        await message.answer("❌ Неизвестное действие. Выбери кнопку боя или используй /help.")
+        return
+
     p = get_player(uid)
 
     if not p:
@@ -788,8 +793,20 @@ async def process_battle_action(uid, message, action):
 @dp.callback_query(lambda c: c.data and c.data.startswith("battle_"))
 async def battle_action_callback(callback: CallbackQuery):
     action = callback.data.replace("battle_", "", 1)
-    await process_battle_action(callback.from_user.id, callback.message, action)
+    if action not in {"attack", "defend", "potion", "escape"}:
+        await callback.answer("Действие недоступно", show_alert=True)
+        return
+    # Stop Telegram's loading indicator before performing database/message work.
     await callback.answer()
+    await process_battle_action(callback.from_user.id, callback.message, action)
+
+
+@dp.callback_query(lambda c: c.data == "equipment_menu")
+async def equipment_menu_callback(callback: CallbackQuery):
+    # This callback is emitted by equipment_keyboard; without a handler the
+    # "back to menu" inline button appears to do nothing.
+    await callback.answer()
+    await callback.message.answer("🏙️ Главное меню", reply_markup=main_keyboard())
 
 
 async def process_equipment_action(uid, message, text):
@@ -834,10 +851,12 @@ async def equip_action(callback: CallbackQuery):
     item = callback.data.replace("equip_", "", 1)
 
     if item == "menu":
-        await callback.message.answer("🏙️ Главное меню", reply_markup=main_keyboard())
         await callback.answer()
+        await callback.message.answer("🏙️ Главное меню", reply_markup=main_keyboard())
         return
 
+    # Acknowledge the tap immediately; database and image delivery can take longer.
+    await callback.answer()
     if equip_item(uid, item):
         items = get_inventory(uid)
         equipped = get_equipment(uid)
@@ -846,14 +865,14 @@ async def equip_action(callback: CallbackQuery):
             equipment_text(items, equipped),
             equipment_keyboard(items)
         )
-        await callback.answer("Экипировано")
     else:
-        await callback.answer("Предмет недоступен", show_alert=True)
+        await callback.message.answer("❌ Предмет недоступен. Проверь рюкзак через /inventory.")
 
 
 @dp.callback_query(lambda c: c.data == "unequip")
 async def unequip_action(callback: CallbackQuery):
     uid = callback.from_user.id
+    await callback.answer()
     unequip_item(uid)
     items = get_inventory(uid)
 
@@ -862,7 +881,6 @@ async def unequip_action(callback: CallbackQuery):
         equipment_text(items, ""),
         equipment_keyboard(items)
     )
-    await callback.answer("Экипировка снята")
 
 
 @dp.message()
