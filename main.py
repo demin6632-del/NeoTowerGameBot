@@ -13,7 +13,7 @@ from database import (
     init_db, get_player, create_player, add_reward, next_floor,
     get_inventory, get_equipment, equip_item, unequip_item,
     get_battle_session, save_battle_session, delete_battle_session,
-    add_item, remove_item, spend_credits, get_daily_claim, set_daily_claim, top_players
+    add_item, remove_item, spend_credits, get_daily_claim, set_daily_claim, claim_daily_reward, complete_tower, top_players
 )
 from keyboards import (
     heroes_keyboard, main_keyboard, battle_keyboard, equipment_keyboard
@@ -198,7 +198,11 @@ async def auto_command(message: Message):
     if not p:
         await message.answer("Сначала выбери героя через /start", reply_markup=heroes_keyboard())
         return
-    state = active_battles.get(message.from_user.id) or get_battle_session(message.from_user.id) or start_battle(p, p["floor"])
+    state = active_battles.get(message.from_user.id) or get_battle_session(message.from_user.id)
+    if state is None and p["tower_cleared"]:
+        await visual_answer(message, "👑 Башня уже покорена! Все 10 этажей пройдены.", main_keyboard())
+        return
+    state = state or start_battle(p, p["floor"])
     steps = 0
     while state["player_hp"] > 0 and state["enemy_hp"] > 0 and steps < 500:
         state = battle_turn(p, state, "attack")
@@ -208,6 +212,8 @@ async def auto_command(message: Message):
         add_reward(message.from_user.id, 100, reward)
         if p["floor"] < MAX_FLOOR:
             next_floor(message.from_user.id)
+        else:
+            complete_tower(message.from_user.id)
         delete_battle_session(message.from_user.id)
         active_battles.pop(message.from_user.id, None)
         result_text = (
@@ -370,11 +376,9 @@ async def daily_command(message: Message):
         return
     from datetime import datetime, timezone
     day = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-    if get_daily_claim(message.from_user.id) == day:
+    if not claim_daily_reward(message.from_user.id, day, 50, 250):
         await message.answer("🎁 Ежедневная награда уже получена сегодня.")
         return
-    set_daily_claim(message.from_user.id, day)
-    add_reward(message.from_user.id, 50, 250)
     await message.answer("🎁 Ежедневная награда: +50 XP и +250 кредитов!")
 
 
@@ -393,8 +397,8 @@ async def next_command(message: Message):
     if state and state["enemy_hp"] > 0:
         await message.answer("🎯 Следующее действие: /attack\\nВ бою сейчас доступна атака.")
     else:
-        if p["floor"] >= MAX_FLOOR:
-            await message.answer("👑 Башня покорена. Ты достиг вершины Neo Tower.")
+        if p["tower_cleared"]:
+            await message.answer("👑 Башня покорена. Ты прошёл все 10 этажей Neo Tower.")
         else:
             await message.answer("🎯 Следующее действие: /battle\\nНачни бой на текущем этаже.")
 
@@ -501,6 +505,9 @@ async def run_fight(uid, message):
         state = get_battle_session(uid)
 
     if state is None:
+        if p["tower_cleared"]:
+            await visual_answer(message, "👑 Башня уже покорена! Все 10 этажей пройдены.", main_keyboard())
+            return
         state = start_battle(p, p["floor"])
         save_battle_session(uid, state)
 
@@ -533,6 +540,9 @@ async def process_battle_action(uid, message, action):
         state = get_battle_session(uid)
 
     if state is None:
+        if p["tower_cleared"]:
+            await visual_answer(message, "👑 Башня уже покорена! Все 10 этажей пройдены.", main_keyboard())
+            return
         state = start_battle(p, p["floor"])
 
     active_battles[uid] = state
@@ -560,17 +570,20 @@ async def process_battle_action(uid, message, action):
         add_reward(uid, 100, reward)
         if p["floor"] < MAX_FLOOR:
             next_floor(uid)
+            result_text = (
+                f"🏆 ПОБЕДА!\n\n💰 Награда: +{reward} кредитов\n"
+                "⭐ XP: +100\n⬆️ Следующий этаж открыт."
+            )
+        else:
+            complete_tower(uid)
+            result_text = (
+                f"👑 ВЕРШИНА ПОКОРЕНА!\n\n💰 Награда: +{reward} кредитов\n"
+                "⭐ XP: +100\n🏰 Ты прошёл все 10 этажей Neo Tower!"
+            )
         active_battles.pop(uid, None)
         delete_battle_session(uid)
 
-        await visual_answer(
-            message,
-            f"🏆 ПОБЕДА!\n\n"
-            f"💰 Награда: +{reward} кредитов\n"
-            "⭐ XP: +100\n"
-            "⬆️ Следующий этаж открыт." if p["floor"] < MAX_FLOOR else "👑 Вершина башни покорена!",
-            main_keyboard()
-        )
+        await visual_answer(message, result_text, main_keyboard())
 
     elif state["player_hp"] <= 0:
         active_battles.pop(uid, None)
@@ -672,6 +685,8 @@ async def unequip_action(callback: CallbackQuery):
 
 @dp.message()
 async def menu(message: Message):
+    if not message.text:
+        return
     p = get_player(message.from_user.id)
 
     if message.text == "⚔️ БОЙ":
@@ -755,9 +770,10 @@ async def menu(message: Message):
         await visual_answer(
             message,
             "🛒 МАГАЗИН\n\n"
-            "⚔️ Железный меч — уже доступен\n"
-            "🛡 Стальная броня — скоро\n\n"
-            "Магазин будет расширяться.",
+            "🛡 Стальная броня — 500 кредитов\n"
+            "💊 Зелье здоровья — 100 кредитов\n\n"
+            "Купить: /buy steel_armor или /buy health_potion.\n"
+            "Продать: /sell steel_armor или /sell health_potion.",
             main_keyboard()
         )
 
@@ -765,7 +781,7 @@ async def menu(message: Message):
         await visual_answer(
             message,
             "🏆 РЕЙТИНГ\n\n"
-            "Таблица лидеров будет добавлена следующим обновлением.",
+            + ("\n".join(f"{i}. {row['name']} — этаж {row['floor']} • ур. {row['level']} • XP {row['xp']}" for i, row in enumerate(top_players(10), 1)) or "Пока нет игроков."),
             main_keyboard()
         )
 
