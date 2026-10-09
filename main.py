@@ -27,20 +27,42 @@ from error_handler import setup_error_handler
 
 active_battles = {}
 
+# Real photographs from Unsplash, selected by enemy/floor instead of one generic battle illustration.
+# Photo pages: Unsplash robot photo by Mathew Schwartz (TOCABI) and drone photo by Cam Bradford.
 IMAGE_URLS = {
-    "home": "https://r2.starryai.com/results/1056204224/aa887581-c00b-48d8-8b56-f1b15fe2b24f.webp",
-    "hero": "https://pbs.twimg.com/media/HCRjaDMXUAAtISe.jpg",
-    "tower": "https://r2.starryai.com/results/1056204224/aa887581-c00b-48d8-8b56-f1b15fe2b24f.webp",
-    "shop": "https://r2.starryai.com/results/1020109006/e7698c03-8f8a-46aa-8b83-677750a84579.webp",
-    "battle": "https://static.wixstatic.com/media/2e8295_6c619453bed94c269a2f4cd6fd448a41~mv2.png/v1/fill/w_1024,h_1024,al_c/2e8295_6c619453bed94c269a2f4cd6fd448a41~mv2.png",
-    "backpack": "https://r2.starryai.com/results/1020109006/e7698c03-8f8a-46aa-8b83-677750a84579.webp",
-    "equipment": "https://img.2game.info/webp/l/skyrimspecialedition/images/mod/52462/1626474309.jpeg",
+    "home": "https://images.unsplash.com/photo-1631882456892-54a30e92fe4f?auto=format&fit=crop&w=1200&q=85",
+    "hero": "https://images.unsplash.com/photo-1631882456892-54a30e92fe4f?auto=format&fit=crop&w=1200&q=85",
+    "tower": "https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&w=1200&q=85",
+    "shop": "https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&w=1200&q=85",
+    "battle": "https://images.unsplash.com/photo-1631882456892-54a30e92fe4f?auto=format&fit=crop&w=1200&q=85",
+    "backpack": "https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&w=1200&q=85",
+    "equipment": "https://images.unsplash.com/photo-1631882456892-54a30e92fe4f?auto=format&fit=crop&w=1200&q=85",
+}
+
+# Photographic references: floor 1 is a real quadcopter; higher floors use real robotics photos.
+ENEMY_PHOTO_BY_FLOOR = {
+    1: "https://images.unsplash.com/photo-1571272203931-4fe40875e043?auto=format&fit=crop&w=1200&q=85",
+    2: "https://images.unsplash.com/photo-1631882456892-54a30e92fe4f?auto=format&fit=crop&w=1200&q=85",
+    3: "https://images.unsplash.com/photo-1485827404703-89b55fcc595e?auto=format&fit=crop&w=1200&q=85",
+    4: "https://images.unsplash.com/photo-1631882456892-54a30e92fe4f?auto=format&fit=crop&w=1200&q=85",
+    5: "https://images.unsplash.com/photo-1485827404703-89b55fcc595e?auto=format&fit=crop&w=1200&q=85",
+    6: "https://images.unsplash.com/photo-1631882456892-54a30e92fe4f?auto=format&fit=crop&w=1200&q=85",
+    7: "https://images.unsplash.com/photo-1485827404703-89b55fcc595e?auto=format&fit=crop&w=1200&q=85",
+    8: "https://images.unsplash.com/photo-1631882456892-54a30e92fe4f?auto=format&fit=crop&w=1200&q=85",
+    9: "https://images.unsplash.com/photo-1485827404703-89b55fcc595e?auto=format&fit=crop&w=1200&q=85",
+    10: "https://images.unsplash.com/photo-1631882456892-54a30e92fe4f?auto=format&fit=crop&w=1200&q=85",
 }
 
 def image_for_text(text: str) -> str:
+    import re
     t = text.upper()
     if "БОЙ" in t or "ВРАГ" in t or "ПОБЕДА" in t or "ПОРАЖЕНИЕ" in t:
-        return IMAGE_URLS["battle"]
+        # Prefer the exact floor when it is present in the battle text.
+        match = re.search(r"ЭТАЖ\s*(\d+)", t)
+        if not match:
+            match = re.search(r"ЭТАЖА\s*(\d+)", t)
+        floor = int(match.group(1)) if match else 1
+        return ENEMY_PHOTO_BY_FLOOR.get(floor, IMAGE_URLS["battle"])
     if "ГЕРОЙ" in t or "ВЫБЕРИ ГЕРОЯ" in t:
         return IMAGE_URLS["hero"]
     if "БАШНЯ" in t or "ЭТАЖ" in t:
@@ -306,7 +328,7 @@ async def auto_command(message: Message):
         else:
             save_battle_session(message.from_user.id, state)
             active_battles[message.from_user.id] = state
-            await visual_answer(message, f"🤖 АВТО-БОЙ\n\n⏸ Бой не завершён.\n❤️ Осталось: {state['player_hp']} HP\n🤖 Враг: {state['enemy_hp']} HP", battle_keyboard())
+            await visual_answer(message, f"🤖 АВТО-БОЙ — этаж {p['floor']}\n\n⏸ Бой не завершён.\n❤️ Осталось: {state['player_hp']} HP\n🤖 {state['enemy']['name']}: {state['enemy_hp']} HP", battle_keyboard())
 
 
 @dp.message(Command("backpack"))
@@ -677,9 +699,9 @@ async def process_battle_action(uid, message, action):
         save_battle_session(uid, state)
         await visual_answer(
             message,
-            f"⚔️ БОЙ ПРОДОЛЖАЕТСЯ\n\n"
+            f"⚔️ БОЙ ПРОДОЛЖАЕТСЯ — этаж {p['floor']}\n\n"
             f"❤️ Герой: {state['player_hp']} HP\n"
-            f"🤖 Враг: {state['enemy_hp']} HP\n\n"
+            f"🤖 {state['enemy']['name']}: {state['enemy_hp']} HP\n\n"
             "Выбери действие внизу:",
             battle_keyboard()
         )
