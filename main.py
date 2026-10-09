@@ -37,7 +37,7 @@ IMAGE_URLS = {
     "shop": "https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&w=1200&q=85",
     "battle": "https://images.unsplash.com/photo-1631882456892-54a30e92fe4f?auto=format&fit=crop&w=1200&q=85",
     "backpack": "https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&w=1200&q=85",
-    "equipment": "https://images.unsplash.com/photo-1631882456892-54a30e92fe4f?auto=format&fit=crop&w=1200&q=85",
+    "equipment": "https://master-uley.com/cdn/shop/files/DC319103-0A04-4E68-B634-37630208BC81_1200x1200.jpg?v=1755200173",
 }
 
 # Отдельные изображения для каждого игрового персонажа.
@@ -65,10 +65,24 @@ def image_for_text(text: str) -> str:
     import re
     t = text.upper()
     if "БОЙ" in t or "ВРАГ" in t or "ПОБЕДА" in t or "ПОРАЖЕНИЕ" in t:
-        # Prefer the exact floor when it is present in the battle text.
-        match = re.search(r"ЭТАЖ\s*(\d+)", t)
-        if not match:
-            match = re.search(r"ЭТАЖА\s*(\d+)", t)
+        # Победное сообщение содержит имя поверженного врага; выбираем фото по нему.
+        enemy_images = {
+            "ДРОН MK-1": ENEMY_PHOTO_BY_FLOOR[1],
+            "БОЕВОЙ РОБОТ": "https://media.contra.com/image/upload/fl_progressive/q_auto%3Abest/xxkm4vbslue4apwyetqz.webp",
+            "ШТУРМОВИК": "https://image.cdn2.seaart.ai/2024-05-27/cpa11m5e878c73bb2thg/116b107e8f41fa2c1e3db42e42fdacc721189e39_high.webp",
+            "ТЯЖЁЛЫЙ МЕХ": ENEMY_PHOTO_BY_FLOOR[3],
+            "СТРАЖ ДАННЫХ": ENEMY_PHOTO_BY_FLOOR[5],
+            "НЕЙРООХОТНИК": ENEMY_PHOTO_BY_FLOOR[6],
+            "КАРАТЕЛЬ": ENEMY_PHOTO_BY_FLOOR[7],
+            "СТРАЖ ЯДРА": ENEMY_PHOTO_BY_FLOOR[8],
+            "АЛЬФА-МЕХ": ENEMY_PHOTO_BY_FLOOR[9],
+            "ВЛАСТЕЛИН БАШНИ": ENEMY_PHOTO_BY_FLOOR[10],
+        }
+        for enemy_name, image_url in enemy_images.items():
+            if enemy_name in t:
+                return image_url
+        # Accept formats such as "Этаж: 2" and "этаж 2".
+        match = re.search(r"ЭТАЖ\D*(\d+)", t)
         floor = int(match.group(1)) if match else 1
         return ENEMY_PHOTO_BY_FLOOR.get(floor, IMAGE_URLS["battle"])
     # Сначала проверяем конкретного выбранного героя: подтверждение выбора
@@ -354,6 +368,8 @@ async def auto_command(message: Message):
         state = battle_turn(p, state, "attack")
         steps += 1
     if state["enemy_hp"] <= 0:
+        enemy_name = state["enemy"]["name"]
+        defeated_floor = p["floor"]
         reward = state["enemy"].get("reward", 100)
         add_reward(message.from_user.id, 100, reward)
         if p["floor"] < MAX_FLOOR:
@@ -363,8 +379,9 @@ async def auto_command(message: Message):
         delete_battle_session(message.from_user.id)
         active_battles.pop(message.from_user.id, None)
         result_text = (
-            f"🤖 АВТО-БОЙ\n\n🏆 Победа!\n💰 +{reward} кредитов\n⭐ +100 XP\n"
-            + ("👑 Вершина башни покорена!" if p["floor"] >= MAX_FLOOR else "⬆️ Следующий этаж открыт.")
+            f"🤖 АВТО-БОЙ\n\n🏆 Победа!\n🤖 Побеждён враг: {enemy_name}\n🏰 Этаж: {defeated_floor}\n"
+            f"💰 +{reward} кредитов\n⭐ +100 XP\n"
+            + ("👑 Вершина башни покорена!" if defeated_floor >= MAX_FLOOR else "⬆️ Следующий этаж открыт.")
         )
         await visual_answer(message, result_text, main_keyboard())
     else:
@@ -714,19 +731,21 @@ async def process_battle_action(uid, message, action):
     active_battles[uid] = state
 
     if state["enemy_hp"] <= 0:
+        enemy_name = state["enemy"]["name"]
+        defeated_floor = p["floor"]
         reward = state["enemy"].get("reward", 100)
         add_reward(uid, 100, reward)
         if p["floor"] < MAX_FLOOR:
             next_floor(uid)
             result_text = (
-                f"🏆 ПОБЕДА!\n\n💰 Награда: +{reward} кредитов\n"
-                "⭐ XP: +100\n⬆️ Следующий этаж открыт."
+                f"🏆 ПОБЕДА!\n\n🤖 Побеждён враг: {enemy_name}\n🏰 Этаж: {defeated_floor}\n"
+                f"💰 Награда: +{reward} кредитов\n⭐ XP: +100\n⬆️ Следующий этаж открыт."
             )
         else:
             complete_tower(uid)
             result_text = (
-                f"👑 ВЕРШИНА ПОКОРЕНА!\n\n💰 Награда: +{reward} кредитов\n"
-                "⭐ XP: +100\n🏰 Ты прошёл все 10 этажей Neo Tower!"
+                f"👑 ВЕРШИНА ПОКОРЕНА!\n\n🤖 Побеждён враг: {enemy_name}\n🏰 Этаж: {defeated_floor}\n"
+                f"💰 Награда: +{reward} кредитов\n⭐ XP: +100\n🏰 Ты прошёл все 10 этажей Neo Tower!"
             )
         active_battles.pop(uid, None)
         delete_battle_session(uid)
