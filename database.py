@@ -275,8 +275,9 @@ def equip_item(user_id, item):
     db = connect()
     try:
         with db:
+            # Fetch both columns used by the equipment logic.
             player = db.execute(
-                "SELECT inventory FROM players WHERE id=?",
+                "SELECT inventory, equipment FROM players WHERE id=?",
                 (user_id,),
             ).fetchone()
             if not player:
