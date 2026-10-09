@@ -4,7 +4,12 @@ from tower import TOWER
 
 
 def create_enemy(floor):
-    return TOWER.get(floor, TOWER[max(TOWER.keys())]).copy()
+    """Return a normalized enemy record for the selected tower floor."""
+    source = TOWER.get(floor, TOWER[max(TOWER.keys())])
+    enemy = source.copy()
+    enemy["floor_name"] = source.get("name", f"Этаж {floor}")
+    enemy["name"] = source.get("enemy", source.get("name", "Неизвестный враг"))
+    return enemy
 
 
 def get_equipment_bonus(player):
@@ -55,12 +60,12 @@ def battle_turn(player, state, action):
 
     if action == "attack":
         damage = player_attack(player["damage"], attack_bonus)
-        state["enemy_hp"] -= damage
+        state["enemy_hp"] = max(0, state["enemy_hp"] - damage)
         log.append(f"⚔️ Ты нанёс {damage} урона")
 
     elif action == "defend":
         damage = max(enemy_attack(state["enemy"]["damage"], effective_armor) // 2, 1)
-        state["player_hp"] -= damage
+        state["player_hp"] = max(0, state["player_hp"] - damage)
         log.append(f"🛡 Защита! Получено {damage} урона")
 
     elif action == "potion":
@@ -71,7 +76,7 @@ def battle_turn(player, state, action):
 
     if action != "defend" and state["enemy_hp"] > 0:
         damage = enemy_attack(state["enemy"]["damage"], effective_armor)
-        state["player_hp"] -= damage
+        state["player_hp"] = max(0, state["player_hp"] - damage)
         log.append(f"🤖 Враг нанёс {damage} урона")
     elif action == "defend":
         # Defend already includes the enemy's attack at half damage.
