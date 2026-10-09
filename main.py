@@ -1,12 +1,13 @@
 import asyncio
+import hashlib
 import os
 from pathlib import Path
-from threading import Thread
-from http.server import HTTPServer, BaseHTTPRequestHandler
+
+from aiohttp import web
 
 from aiogram import Bot, Dispatcher
 from aiogram.filters import Command
-from aiogram.types import Message, CallbackQuery, BotCommand
+from aiogram.types import Message, CallbackQuery, BotCommand, Update
 
 from config import BOT_TOKEN
 from database import (
@@ -52,23 +53,99 @@ def image_for_text(text: str) -> str:
         return IMAGE_URLS["equipment"]
     return IMAGE_URLS["home"]
 
-class HealthHandler(BaseHTTPRequestHandler):
-    def do_GET(self):
-        self.send_response(200)
-        self.end_headers()
-        self.wfile.write(b"NeoTowerGameBot is alive")
-
-    def log_message(self, format, *args):
-        pass
+WEBHOOK_SECRET = hashlib.sha256(BOT_TOKEN.encode("utf-8")).hexdigest()
+WEBHOOK_PATH = "/telegram/" + WEBHOOK_SECRET[:32]
 
 
-def start_health_server():
-    port = int(os.environ.get("PORT", 10000))
-    server = HTTPServer(("0.0.0.0", port), HealthHandler)
-    server.serve_forever()
+async def health_handler(request: web.Request):
+    return web.Response(text="NeoTowerGameBot is alive", content_type="text/plain")
 
 
-Thread(target=start_health_server, daemon=True).start()
+async def telegram_webhook(request: web.Request):
+    if request.headers.get("X-Telegram-Bot-Api-Secret-Token") != WEBHOOK_SECRET:
+        return web.Response(status=403, text="Forbidden")
+    try:
+        payload = await request.json()
+        update = Update.model_validate(payload, context={"bot": bot})
+        await dp.feed_update(bot, update)
+    except Exception:
+        import logging
+        logging.exception("Telegram webhook update failed")
+        return web.Response(status=500, text="Update processing failed")
+    return web.Response(text="OK")
+
+
+async def on_startup(app: web.Application):
+    init_db()
+    await bot.set_my_commands([
+        BotCommand(command="start", description="🎮 Запуск"),
+        BotCommand(command="help", description="📚 Все команды"),
+        BotCommand(command="menu", description="🏙️ Главное меню"),
+        BotCommand(command="profile", description="👤 Профиль"),
+        BotCommand(command="status", description="📊 Полное состояние"),
+        BotCommand(command="stats", description="📈 Характеристики"),
+        BotCommand(command="hero", description="🧙 Герой"),
+        BotCommand(command="tower", description="🏰 Башня"),
+        BotCommand(command="floor", description="🏰 Текущий этаж"),
+        BotCommand(command="battle", description="⚔️ Начать бой"),
+        BotCommand(command="continue", description="▶️ Продолжить бой"),
+        BotCommand(command="attack", description="⚔️ Атака"),
+        BotCommand(command="defend", description="🛡 Защита"),
+        BotCommand(command="potion", description="💊 Зелье"),
+        BotCommand(command="escape", description="🏃 Побег"),
+        BotCommand(command="enemy", description="🤖 Текущий враг"),
+        BotCommand(command="auto", description="🤖 Авто-бой"),
+        BotCommand(command="backpack", description="🎒 Рюкзак"),
+        BotCommand(command="inventory", description="📦 Предметы"),
+        BotCommand(command="equipment", description="🛡 Экипировка"),
+        BotCommand(command="equip", description="⚙️ Экипировать"),
+        BotCommand(command="unequip", description="❌ Снять экипировку"),
+        BotCommand(command="items", description="📦 Все предметы"),
+        BotCommand(command="shop", description="🛒 Магазин"),
+        BotCommand(command="buy", description="💳 Купить предмет"),
+        BotCommand(command="sell", description="💰 Продать предмет"),
+        BotCommand(command="coins", description="💰 Баланс"),
+        BotCommand(command="balance", description="💰 Баланс"),
+        BotCommand(command="level", description="⭐ Уровень"),
+        BotCommand(command="xp", description="✨ Опыт"),
+        BotCommand(command="achievements", description="🏆 Достижения"),
+        BotCommand(command="rating", description="🏆 Рейтинг"),
+        BotCommand(command="top", description="🏆 Топ игроков"),
+        BotCommand(command="daily", description="🎁 Ежедневная награда"),
+        BotCommand(command="bonus", description="🎁 Бонусы"),
+        BotCommand(command="next", description="🎯 Следующее действие"),
+        BotCommand(command="guide", description="📖 Гайд"),
+        BotCommand(command="settings", description="⚙️ Настройки"),
+        BotCommand(command="language", description="🌐 Язык"),
+        BotCommand(command="save", description="💾 Сохранить бой"),
+        BotCommand(command="about", description="ℹ️ Об игре"),
+        BotCommand(command="support", description="🆘 Помощь"),
+    ])
+    base_url = os.environ.get("RENDER_EXTERNAL_URL", "").rstrip("/")
+    if not base_url:
+        raise RuntimeError("RENDER_EXTERNAL_URL is missing; webhook mode requires the public Render URL")
+    await bot.set_webhook(
+        url=base_url + WEBHOOK_PATH,
+        secret_token=WEBHOOK_SECRET,
+        drop_pending_updates=False,
+        allowed_updates=dp.resolve_used_update_types(),
+    )
+
+
+async def on_cleanup(app: web.Application):
+    # Do not delete the webhook here: during zero-downtime deploys an old
+    # instance could otherwise remove the new instance's webhook.
+    await bot.session.close()
+
+
+def create_app() -> web.Application:
+    app = web.Application()
+    app.router.add_get("/", health_handler)
+    app.router.add_get("/health", health_handler)
+    app.router.add_post(WEBHOOK_PATH, telegram_webhook)
+    app.on_startup.append(on_startup)
+    app.on_cleanup.append(on_cleanup)
+    return app
 
 bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher()
@@ -786,54 +863,13 @@ async def menu(message: Message):
         )
 
 
-async def main():
-    init_db()
-    await bot.set_my_commands([
-        BotCommand(command="start", description="🎮 Запуск"),
-        BotCommand(command="help", description="📚 Все команды"),
-        BotCommand(command="menu", description="🏙️ Главное меню"),
-        BotCommand(command="profile", description="👤 Профиль"),
-        BotCommand(command="status", description="📊 Полное состояние"),
-        BotCommand(command="stats", description="📈 Характеристики"),
-        BotCommand(command="hero", description="🧙 Герой"),
-        BotCommand(command="tower", description="🏰 Башня"),
-        BotCommand(command="floor", description="🏰 Текущий этаж"),
-        BotCommand(command="battle", description="⚔️ Начать бой"),
-        BotCommand(command="continue", description="▶️ Продолжить бой"),
-        BotCommand(command="attack", description="⚔️ Атака"),
-        BotCommand(command="defend", description="🛡 Защита"),
-        BotCommand(command="potion", description="💊 Зелье"),
-        BotCommand(command="escape", description="🏃 Побег"),
-        BotCommand(command="enemy", description="🤖 Текущий враг"),
-        BotCommand(command="auto", description="🤖 Авто-бой"),
-        BotCommand(command="backpack", description="🎒 Рюкзак"),
-        BotCommand(command="inventory", description="📦 Предметы"),
-        BotCommand(command="equipment", description="🛡 Экипировка"),
-        BotCommand(command="equip", description="⚙️ Экипировать"),
-        BotCommand(command="unequip", description="❌ Снять экипировку"),
-        BotCommand(command="items", description="📦 Все предметы"),
-        BotCommand(command="shop", description="🛒 Магазин"),
-        BotCommand(command="buy", description="💳 Купить предмет"),
-        BotCommand(command="sell", description="💰 Продать предмет"),
-        BotCommand(command="coins", description="💰 Баланс"),
-        BotCommand(command="balance", description="💰 Баланс"),
-        BotCommand(command="level", description="⭐ Уровень"),
-        BotCommand(command="xp", description="✨ Опыт"),
-        BotCommand(command="achievements", description="🏆 Достижения"),
-        BotCommand(command="rating", description="🏆 Рейтинг"),
-        BotCommand(command="top", description="🏆 Топ игроков"),
-        BotCommand(command="daily", description="🎁 Ежедневная награда"),
-        BotCommand(command="bonus", description="🎁 Бонусы"),
-        BotCommand(command="next", description="🎯 Следующее действие"),
-        BotCommand(command="guide", description="📖 Гайд"),
-        BotCommand(command="settings", description="⚙️ Настройки"),
-        BotCommand(command="language", description="🌐 Язык"),
-        BotCommand(command="save", description="💾 Сохранить бой"),
-        BotCommand(command="about", description="ℹ️ Об игре"),
-        BotCommand(command="support", description="🆘 Помощь"),
-    ])
-    await dp.start_polling(bot)
+def main():
+    web.run_app(
+        create_app(),
+        host="0.0.0.0",
+        port=int(os.environ.get("PORT", "10000")),
+    )
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    main()
