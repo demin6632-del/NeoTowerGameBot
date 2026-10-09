@@ -125,7 +125,7 @@ class GameplayTests(unittest.TestCase):
                     f"{hero_key} could not survive floor {floor} with armor and 30 potions"
                 )
                 self.assertEqual(state["enemy_hp"], 0, f"{hero_key} did not clear floor {floor}")
-                database.add_reward(user_id, 100, TOWER[floor]["reward"])
+                database.add_reward(user_id, 100 + floor * 25, TOWER[floor]["reward"])
                 if floor < MAX_FLOOR:
                     database.next_floor(user_id)
                 else:
