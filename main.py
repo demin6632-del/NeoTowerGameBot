@@ -98,19 +98,19 @@ def require_player(message: Message):
 @dp.message(Command("help"))
 async def help_command(message: Message):
     await message.answer(
-        "📚 NEO TOWER — КОМАНДЫ\\n\\n"
-        "/start — запустить игру\\n/menu — главное меню\\n/profile — профиль\\n/status — полное состояние\\n"
-        "/stats — характеристики\\n/hero — герой\\n/tower — башня\\n/floor — этаж\\n"
-        "/battle — начать бой\\n/continue — продолжить бой\\n/attack — атака\\n/defend — защита\\n"
-        "/potion — зелье\\n/escape — побег\\n/enemy — текущий враг\\n/auto — авто-бой\\n"
-        "/backpack — рюкзак\\n/inventory — предметы\\n/equipment — экипировка\\n"
-        "/equip <item> — экипировать\\n/unequip — снять\\n/items — все предметы\\n"
-        "/shop — магазин\\n/buy <item> — купить\\n/sell <item> — продать\\n"
-        "/coins — кредиты\\n/balance — баланс\\n/level — уровень\\n/xp — опыт\\n"
-        "/achievements — достижения\\n/rating — рейтинг\\n/top — топ игроков\\n"
-        "/daily — ежедневная награда\\n/bonus — бонусы\\n/next — следующее действие\\n"
-        "/guide — гайд\\n/settings — настройки\\n/language — язык\\n/save — сохранить бой\\n"
-        "/about — об игре\\n/support — помощь"
+        "📚 NEO TOWER — КОМАНДЫ\n\n"
+        "/start — запустить игру\n/menu — главное меню\n/profile — профиль\n/status — полное состояние\n"
+        "/stats — характеристики\n/hero — герой\n/tower — башня\n/floor — этаж\n"
+        "/battle — начать бой\n/continue — продолжить бой\n/attack — атака\n/defend — защита\n"
+        "/potion — зелье\n/escape — побег\n/enemy — текущий враг\n/auto — авто-бой\n"
+        "/backpack — рюкзак\n/inventory — предметы\n/equipment — экипировка\n"
+        "/equip <item> — экипировать\n/unequip — снять\n/items — все предметы\n"
+        "/shop — магазин\n/buy <item> — купить\n/sell <item> — продать\n"
+        "/coins — кредиты\n/balance — баланс\n/level — уровень\n/xp — опыт\n"
+        "/achievements — достижения\n/rating — рейтинг\n/top — топ игроков\n"
+        "/daily — ежедневная награда\n/bonus — бонусы\n/next — следующее действие\n"
+        "/guide — гайд\n/settings — настройки\n/language — язык\n/save — сохранить бой\n"
+        "/about — об игре\n/support — помощь"
     )
 
 
@@ -125,8 +125,8 @@ async def profile_command(message: Message):
     if not p:
         await message.answer("Сначала выбери героя через /start", reply_markup=heroes_keyboard())
         return
-    await visual_answer(message, f"👤 ПРОФИЛЬ\\n\\nИмя: {p['name']}\\nГерой: {p['hero']}\\n"
-        f"🏰 Этаж: {p['floor']}\\n⭐ Уровень: {p['level']}\\n✨ XP: {p['xp']}\\n💰 Кредиты: {p['credits']}", main_keyboard())
+    await visual_answer(message, f"👤 ПРОФИЛЬ\n\nИмя: {p['name']}\nГерой: {p['hero']}\n"
+        f"🏰 Этаж: {p['floor']}\n⭐ Уровень: {p['level']}\n✨ XP: {p['xp']}\n💰 Кредиты: {p['credits']}", main_keyboard())
 
 
 @dp.message(Command("status"))
@@ -139,10 +139,10 @@ async def status_command(message: Message):
     equipped = get_equipment(message.from_user.id)
     state = active_battles.get(message.from_user.id) or get_battle_session(message.from_user.id)
     battle_text = f"{state['enemy']['name']} — {state['enemy_hp']} HP" if state else "нет"
-    await visual_answer(message, f"📊 ПОЛНОЕ СОСТОЯНИЕ\\n\\n🧙 {p['name']}\\n❤️ HP: {p['hp']}\\n"
-        f"⚔️ Урон: {p['damage']}\\n🛡 Броня: {p['armor']}\\n🏰 Этаж: {p['floor']}\\n"
-        f"⭐ Уровень: {p['level']}\\n✨ XP: {p['xp']}\\n💰 Кредиты: {p['credits']}\\n"
-        f"🎒 Предметов: {len(items)}\\n⚙️ Экипировано: {equipped or 'нет'}\\n⚔️ Бой: {battle_text}", main_keyboard())
+    await visual_answer(message, f"📊 ПОЛНОЕ СОСТОЯНИЕ\n\n🧙 {p['name']}\n❤️ HP: {p['hp']}\n"
+        f"⚔️ Урон: {p['damage']}\n🛡 Броня: {p['armor']}\n🏰 Этаж: {p['floor']}\n"
+        f"⭐ Уровень: {p['level']}\n✨ XP: {p['xp']}\n💰 Кредиты: {p['credits']}\n"
+        f"🎒 Предметов: {len(items)}\n⚙️ Экипировано: {equipped or 'нет'}\n⚔️ Бой: {battle_text}", main_keyboard())
 
 
 @dp.message(Command("stats"))
@@ -152,15 +152,15 @@ async def stats_command(message: Message):
     if not p:
         await message.answer("Сначала выбери героя через /start", reply_markup=heroes_keyboard())
         return
-    await visual_answer(message, f"🧙 ГЕРОЙ\\n\\n❤️ HP: {p['hp']}\\n⚔️ Урон: {p['damage']}\\n"
-        f"🛡 Броня: {p['armor']}\\n🏰 Этаж: {p['floor']}\\n⭐ Уровень: {p['level']}\\n✨ XP: {p['xp']}", main_keyboard())
+    await visual_answer(message, f"🧙 ГЕРОЙ\n\n❤️ HP: {p['hp']}\n⚔️ Урон: {p['damage']}\n"
+        f"🛡 Броня: {p['armor']}\n🏰 Этаж: {p['floor']}\n⭐ Уровень: {p['level']}\n✨ XP: {p['xp']}", main_keyboard())
 
 
 @dp.message(Command("tower"))
 @dp.message(Command("floor"))
 async def tower_command(message: Message):
     p = require_player(message)
-    await visual_answer(message, f"🏰 БАШНЯ\\n\\nТекущий этаж: {p['floor'] if p else 1}\\n"
+    await visual_answer(message, f"🏰 БАШНЯ\n\nТекущий этаж: {p['floor'] if p else 1}\n"
         "Победи врага, чтобы открыть следующий этаж.", main_keyboard())
 
 
@@ -188,8 +188,8 @@ async def enemy_command(message: Message):
     state = active_battles.get(message.from_user.id) or get_battle_session(message.from_user.id)
     if not state:
         state = start_battle(p, p["floor"])
-    await visual_answer(message, f"🤖 ВРАГ\\n\\n{state['enemy']['name']}\\n❤️ HP: {state['enemy_hp']}\\n"
-        f"⚔️ Урон: {state['enemy']['damage']}\\n🏰 Этаж: {p['floor']}", battle_keyboard())
+    await visual_answer(message, f"🤖 ВРАГ\n\n{state['enemy']['name']}\n❤️ HP: {state['enemy_hp']}\n"
+        f"⚔️ Урон: {state['enemy']['damage']}\n🏰 Этаж: {p['floor']}", battle_keyboard())
 
 
 @dp.message(Command("auto"))
@@ -217,7 +217,7 @@ async def auto_command(message: Message):
         delete_battle_session(message.from_user.id)
         active_battles.pop(message.from_user.id, None)
         result_text = (
-            f"🤖 АВТО-БОЙ\\n\\n🏆 Победа!\\n💰 +{reward} кредитов\\n⭐ +100 XP\\n"
+            f"🤖 АВТО-БОЙ\n\n🏆 Победа!\n💰 +{reward} кредитов\n⭐ +100 XP\n"
             + ("👑 Вершина башни покорена!" if p["floor"] >= MAX_FLOOR else "⬆️ Следующий этаж открыт.")
         )
         await visual_answer(message, result_text, main_keyboard())
@@ -225,11 +225,11 @@ async def auto_command(message: Message):
         if state["player_hp"] <= 0:
             delete_battle_session(message.from_user.id)
             active_battles.pop(message.from_user.id, None)
-            await visual_answer(message, "🤖 АВТО-БОЙ\\n\\n💀 Поражение.\\n❤️ Герой восстановится перед следующим боем.", main_keyboard())
+            await visual_answer(message, "🤖 АВТО-БОЙ\n\n💀 Поражение.\n❤️ Герой восстановится перед следующим боем.", main_keyboard())
         else:
             save_battle_session(message.from_user.id, state)
             active_battles[message.from_user.id] = state
-            await visual_answer(message, f"🤖 АВТО-БОЙ\\n\\n⏸ Бой не завершён.\\n❤️ Осталось: {state['player_hp']} HP\\n🤖 Враг: {state['enemy_hp']} HP", battle_keyboard())
+            await visual_answer(message, f"🤖 АВТО-БОЙ\n\n⏸ Бой не завершён.\n❤️ Осталось: {state['player_hp']} HP\n🤖 Враг: {state['enemy_hp']} HP", battle_keyboard())
 
 
 @dp.message(Command("backpack"))
@@ -270,12 +270,12 @@ async def items_command(message: Message):
     for item_id, data in ITEMS.items():
         bonus = f"+{data.get('damage', 0)} урона" if data.get('damage') else f"+{data.get('armor', 0)} брони"
         lines.append(f"• {item_id} — {data['name']} ({bonus})")
-    await message.answer("📦 ПРЕДМЕТЫ\\n\\n" + "\\n".join(lines))
+    await message.answer("📦 ПРЕДМЕТЫ\n\n" + "\n".join(lines))
 
 
 @dp.message(Command("shop"))
 async def shop_command(message: Message):
-    await visual_answer(message, "🛒 МАГАЗИН\\n\\n🛡 steel_armor — 500 кредитов\\n💊 health_potion — 100 кредитов\\n\\nКупить: /buy steel_armor или /buy health_potion", main_keyboard())
+    await visual_answer(message, "🛒 МАГАЗИН\n\n🛡 steel_armor — 500 кредитов\n💊 health_potion — 100 кредитов\n\nКупить: /buy steel_armor или /buy health_potion", main_keyboard())
 
 
 @dp.message(Command("buy"))
@@ -337,7 +337,7 @@ async def level_command(message: Message):
         await message.answer("Сначала выбери героя через /start", reply_markup=heroes_keyboard())
         return
     next_xp = p["level"] * 500
-    await message.answer(f"⭐ Уровень: {p['level']}\\n✨ XP: {p['xp']} / {next_xp}")
+    await message.answer(f"⭐ Уровень: {p['level']}\n✨ XP: {p['xp']} / {next_xp}")
 
 
 @dp.message(Command("achievements"))
@@ -352,7 +352,7 @@ async def achievements_command(message: Message):
         ("🔥 Этаж 10", p["floor"] >= 10),
         ("💰 Богач", p["credits"] >= 1000),
     ]
-    await message.answer("🏆 ДОСТИЖЕНИЯ\\n\\n" + "\\n".join(("✅ " if ok else "🔒 ") + name for name, ok in achievements))
+    await message.answer("🏆 ДОСТИЖЕНИЯ\n\n" + "\n".join(("✅ " if ok else "🔒 ") + name for name, ok in achievements))
 
 
 @dp.message(Command("rating"))
@@ -362,7 +362,7 @@ async def rating_command(message: Message):
     if not rows:
         await message.answer("🏆 Пока нет игроков.")
         return
-    await message.answer("🏆 ТОП ИГРОКОВ\\n\\n" + "\\n".join(
+    await message.answer("🏆 ТОП ИГРОКОВ\n\n" + "\n".join(
         f"{i}. {row['name']} — этаж {row['floor']} • ур. {row['level']} • XP {row['xp']}"
         for i, row in enumerate(rows, 1)
     ))
@@ -395,22 +395,22 @@ async def next_command(message: Message):
         return
     state = active_battles.get(message.from_user.id) or get_battle_session(message.from_user.id)
     if state and state["enemy_hp"] > 0:
-        await message.answer("🎯 Следующее действие: /attack\\nВ бою сейчас доступна атака.")
+        await message.answer("🎯 Следующее действие: /attack\nВ бою сейчас доступна атака.")
     else:
         if p["tower_cleared"]:
             await message.answer("👑 Башня покорена. Ты прошёл все 10 этажей Neo Tower.")
         else:
-            await message.answer("🎯 Следующее действие: /battle\\nНачни бой на текущем этаже.")
+            await message.answer("🎯 Следующее действие: /battle\nНачни бой на текущем этаже.")
 
 
 @dp.message(Command("guide"))
 async def guide_command(message: Message):
-    await message.answer("📖 ГАЙД\\n\\n1. Выбери героя.\\n2. /battle — бой.\\n3. /attack, /defend, /potion.\\n4. Победа открывает следующий этаж.\\n5. /daily — ежедневная награда.")
+    await message.answer("📖 ГАЙД\n\n1. Выбери героя.\n2. /battle — бой.\n3. /attack, /defend, /potion.\n4. Победа открывает следующий этаж.\n5. /daily — ежедневная награда.")
 
 
 @dp.message(Command("settings"))
 async def settings_command(message: Message):
-    await message.answer("⚙️ НАСТРОЙКИ\\n\\nЯзык: русский\\nУведомления: стандартные.")
+    await message.answer("⚙️ НАСТРОЙКИ\n\nЯзык: русский\nУведомления: стандартные.")
 
 
 @dp.message(Command("language"))
@@ -430,7 +430,7 @@ async def save_command(message: Message):
 
 @dp.message(Command("about"))
 async def about_command(message: Message):
-    await message.answer("🏙️ NEO TOWER\\nОдиночная башня с боями, героями, экипировкой и прогрессом.")
+    await message.answer("🏙️ NEO TOWER\nОдиночная башня с боями, героями, экипировкой и прогрессом.")
 
 
 @dp.message(Command("support"))
