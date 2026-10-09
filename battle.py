@@ -53,6 +53,9 @@ def start_battle(player, floor):
 
 
 def battle_turn(player, state, action):
+    if action not in {"attack", "defend", "potion"}:
+        raise ValueError(f"Unsupported battle action: {action!r}")
+
     attack_bonus = get_equipment_bonus(player)
     armor_bonus = get_equipment_armor_bonus(player)
     effective_armor = player["armor"] + armor_bonus
