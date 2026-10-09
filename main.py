@@ -40,6 +40,13 @@ IMAGE_URLS = {
     "equipment": "https://images.unsplash.com/photo-1631882456892-54a30e92fe4f?auto=format&fit=crop&w=1200&q=85",
 }
 
+# Отдельные изображения для каждого игрового персонажа.
+HERO_IMAGE_URLS = {
+    "cyborg": "https://images.unsplash.com/photo-1631882456892-54a30e92fe4f?auto=format&fit=crop&w=1200&q=85",
+    "ninja": "https://images.unsplash.com/photo-1754474479806-5e07e3a9d8c9?auto=format&fit=crop&w=1200&q=85",
+    "psionic": "https://images.pexels.com/photos/29426274/pexels-photo-29426274.jpeg?auto=compress&cs=tinysrgb&w=1200",
+}
+
 # Photographic references: floor 1 is a real quadcopter; higher floors use real robotics photos.
 ENEMY_PHOTO_BY_FLOOR = {
     1: "https://images.unsplash.com/photo-1571272203931-4fe40875e043?auto=format&fit=crop&w=1200&q=85",
@@ -64,6 +71,14 @@ def image_for_text(text: str) -> str:
             match = re.search(r"ЭТАЖА\s*(\d+)", t)
         floor = int(match.group(1)) if match else 1
         return ENEMY_PHOTO_BY_FLOOR.get(floor, IMAGE_URLS["battle"])
+    # Сначала проверяем конкретного выбранного героя: подтверждение выбора
+    # может не содержать слова «герой», поэтому общий фильтр не срабатывает.
+    if "КИБОРГ" in t:
+        return HERO_IMAGE_URLS["cyborg"]
+    if "НИНДЗЯ" in t:
+        return HERO_IMAGE_URLS["ninja"]
+    if "ПСИОНИК" in t:
+        return HERO_IMAGE_URLS["psionic"]
     if "ГЕРОЙ" in t or "ВЫБЕРИ ГЕРОЯ" in t:
         return IMAGE_URLS["hero"]
     if "БАШНЯ" in t or "ЭТАЖ" in t:
