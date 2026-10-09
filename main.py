@@ -37,10 +37,14 @@ IMAGE_URLS = {
     "equipment": "https://img.2game.info/webp/l/skyrimspecialedition/images/mod/52462/1626474309.jpeg",
 }
 
-def image_for_text(text: str) -> str:
+def image_for_text(text: str) -> str | None:
     t = text.upper()
-    if "БОЙ" in t or "ВРАГ" in t or "ПОБЕДА" in t or "ПОРАЖЕНИЕ" in t:
-        return IMAGE_URLS["battle"]
+    # Не прикрепляем случайную универсальную картинку к бою:
+    # изображение должно соответствовать конкретному врагу/этажу.
+    # Пока персональные изображения врагов не добавлены в assets,
+    # лучше показать боевой экран без неверной фотографии.
+    if any(marker in t for marker in ("БОЙ", "ВРАГ", "ПОБЕДА", "ПОРАЖЕНИЕ", "АВТО-БОЙ")):
+        return None
     if "ГЕРОЙ" in t or "ВЫБЕРИ ГЕРОЯ" in t:
         return IMAGE_URLS["hero"]
     if "БАШНЯ" in t or "ЭТАЖ" in t:
@@ -153,9 +157,13 @@ setup_error_handler(dp)
 
 
 async def visual_answer(message: Message, text: str, reply_markup=None):
+    image_url = image_for_text(text)
+    if not image_url:
+        await message.answer(text, reply_markup=reply_markup)
+        return
     try:
         await message.answer_photo(
-            image_for_text(text),
+            image_url,
             caption=text,
             reply_markup=reply_markup
         )
