@@ -34,19 +34,18 @@ def battle_keyboard():
 
 
 def equipment_keyboard(items):
+    """Кнопки экипировки отправляют callback, а не текст в чат."""
     rows = []
+    labels = {
+        "iron_sword": "⚔️ Железный меч",
+        "steel_armor": "🛡 Стальная броня",
+        "health_potion": "💊 Зелье здоровья",
+    }
     for item in items:
-        label = {
-            "iron_sword": "⚔️ Железный меч",
-            "steel_armor": "🛡 Стальная броня"
-        }.get(item, f"⚙️ {item.replace('_', ' ')}")
-        rows.append([KeyboardButton(text=f"⚙️ {label}")])
+        label = labels.get(item)
+        if label:
+            rows.append([InlineKeyboardButton(text=label, callback_data=f"equip_{item}")])
 
-    rows.append([KeyboardButton(text="❌ Снять экипировку")])
-    rows.append([KeyboardButton(text="🔙 В главное меню")])
-
-    return ReplyKeyboardMarkup(
-        keyboard=rows,
-        resize_keyboard=True,
-        input_field_placeholder="Выбери предмет..."
-    )
+    rows.append([InlineKeyboardButton(text="❌ Снять экипировку", callback_data="unequip")])
+    rows.append([InlineKeyboardButton(text="🔙 В главное меню", callback_data="equipment_menu")])
+    return InlineKeyboardMarkup(inline_keyboard=rows)
