@@ -588,12 +588,15 @@ async def language_command(message: Message):
 
 @dp.message(Command("save"))
 async def save_command(message: Message):
-    state = active_battles.get(message.from_user.id)
+    uid = message.from_user.id
+    # A saved battle can exist in the database even when this process has restarted.
+    state = active_battles.get(uid) or get_battle_session(uid)
     if state:
-        save_battle_session(message.from_user.id, state)
-        await message.answer("💾 Бой сохранён.")
+        save_battle_session(uid, state)
+        active_battles[uid] = state
+        await message.answer("💾 Бой сохранён. Прогресс текущего боя записан.")
     else:
-        await message.answer("ℹ️ Активного боя нет.")
+        await message.answer("ℹ️ Активного боя нет. Начни через /battle.")
 
 
 @dp.message(Command("about"))
