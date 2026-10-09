@@ -1,8 +1,10 @@
 import json
+import os
 import sqlite3
 import time
 
-DATABASE = "neotower.db"
+# On Render, point DATABASE_PATH at a mounted persistent disk (for example /var/data/neotower.db).
+DATABASE = os.getenv("DATABASE_PATH", "neotower.db")
 
 
 def connect():
@@ -47,6 +49,10 @@ def init_db():
         day_key TEXT NOT NULL
     )
     """)
+    # Migrate existing databases without deleting player progress.
+    columns = {row["name"] for row in cursor.execute("PRAGMA table_info(players)").fetchall()}
+    if "tower_cleared" not in columns:
+        cursor.execute("ALTER TABLE players ADD COLUMN tower_cleared INTEGER NOT NULL DEFAULT 0")
     db.commit()
     db.close()
 
@@ -183,6 +189,48 @@ def set_daily_claim(user_id, day_key):
                 "ON CONFLICT(user_id) DO UPDATE SET day_key=excluded.day_key",
                 (user_id, day_key)
             )
+    finally:
+        db.close()
+
+
+def claim_daily_reward(user_id, day_key, xp=50, credits=250):
+    """Atomically claim a daily reward; returns False if already claimed."""
+    db = connect()
+    try:
+        db.execute("BEGIN IMMEDIATE")
+        player = db.execute("SELECT xp, level FROM players WHERE id=?", (user_id,)).fetchone()
+        if not player:
+            db.rollback()
+            return False
+        row = db.execute("SELECT day_key FROM daily_rewards WHERE user_id=?", (user_id,)).fetchone()
+        if row and row["day_key"] == day_key:
+            db.rollback()
+            return False
+        new_xp = player["xp"] + xp
+        new_level = max(1, 1 + new_xp // 500)
+        db.execute(
+            "INSERT INTO daily_rewards(user_id,day_key) VALUES(?,?) "
+            "ON CONFLICT(user_id) DO UPDATE SET day_key=excluded.day_key",
+            (user_id, day_key)
+        )
+        db.execute(
+            "UPDATE players SET xp=?, level=?, credits=credits+? WHERE id=?",
+            (new_xp, new_level, credits, user_id)
+        )
+        db.commit()
+        return True
+    except Exception:
+        db.rollback()
+        raise
+    finally:
+        db.close()
+
+
+def complete_tower(user_id):
+    db = connect()
+    try:
+        with db:
+            db.execute("UPDATE players SET tower_cleared=1 WHERE id=?", (user_id,))
     finally:
         db.close()
 
