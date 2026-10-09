@@ -95,15 +95,15 @@ def image_for_text(text: str) -> str:
         return HERO_IMAGE_URLS["psionic"]
     if "ГЕРОЙ" in t or "ВЫБЕРИ ГЕРОЯ" in t:
         return IMAGE_URLS["hero"]
+    # Не показываем иллюстрации предметов на экранах экипировки/рюкзака:
+    # текущий набор экипировки может отличаться, а универсальное фото
+    # способно показывать отсутствующий меч, броню или другие предметы.
+    if any(marker in t for marker in ("СНАРЯЖЕНИЕ", "ЭКИПИРОВ", "РЮКЗАК", "ИНВЕНТАРЬ", "ПРЕДМЕТЫ", "МАГАЗИН")):
+        return None
     if "БАШНЯ" in t or "ЭТАЖ" in t:
         return IMAGE_URLS["tower"]
-    if "МАГАЗИН" in t:
-        return IMAGE_URLS["shop"]
-    if "РЮКЗАК" in t:
-        return IMAGE_URLS["backpack"]
-    if "СНАРЯЖЕНИЕ" in t or "ЭКИПИРОВ" in t:
-        return IMAGE_URLS["equipment"]
-    return IMAGE_URLS["home"]
+    # Не подставляем случайную общую фотографию, если точного соответствия нет.
+    return None
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 logger = logging.getLogger("neotower.webhook")
@@ -236,13 +236,18 @@ setup_error_handler(dp)
 
 
 async def visual_answer(message: Message, text: str, reply_markup=None):
+    photo_url = image_for_text(text)
+    if not photo_url:
+        await message.answer(text, reply_markup=reply_markup)
+        return
     try:
         await message.answer_photo(
-            image_for_text(text),
+            photo_url,
             caption=text,
             reply_markup=reply_markup
         )
     except Exception:
+        logger.exception("Photo delivery failed; sending matching text without image")
         await message.answer(text, reply_markup=reply_markup)
 
 
