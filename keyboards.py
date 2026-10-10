@@ -34,12 +34,11 @@ def battle_keyboard():
 
 
 def equipment_keyboard(items):
-    """Кнопки экипировки отправляют callback, а не текст в чат."""
+    """Показывает экипируемые предметы; расходники остаются в рюкзаке."""
     rows = []
     labels = {
         "iron_sword": "⚔️ Железный меч",
         "steel_armor": "🛡 Стальная броня",
-        "health_potion": "💊 Зелье здоровья",
     }
     for item in items:
         label = labels.get(item)
